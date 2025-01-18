@@ -1,0 +1,94 @@
+body {
+  background-color: #ffeb3b; /* Banana yellow */
+  font-family: sans-serif;
+  padding: 15px;
+}
+
+.App {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.logo {
+  position: absolute;
+  top: 15px;
+  left: 15px; /* Move the logo to the top left */
+  width: 110px; /* Increase the size by 10% */
+}
+
+.content-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 150px; /* Add margin to move content down */
+  width: 100%;
+  max-width: 600px; /* Optional: limit the width of the content */
+  background-color: #F0B200; /* Light yellow background */
+  padding: 20px; /* Add padding for better spacing */
+  border-radius: 10px; /* Optional: add rounded corners */
+}
+
+.post-field {
+  display: flex;
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.post-field input {
+  padding: 10px;
+  font-size: 16px;
+  border: 2px solid #3e5a81; /* Monkey blue */
+  border-radius: 5px;
+  margin-right: 10px;
+  flex: 1;
+}
+
+.post-field .post-button {
+  background-color: #87c341; /* Banana green for buttons */
+  color: #ffeb3b; /* Banana yellow for text */
+  padding: 10px 20px; /* Adjust padding for the post button */
+  font-size: 16px; /* Adjust font size */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.post {
+  border: 2px solid #3e5a81; /* Monkey blue */
+  border-radius: 8px;
+  margin: 10px;
+  padding: 15px;
+  background-color: white; /* Ensure posts have a background color */
+  width: 100%;
+}
+
+.buttons-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.button {
+  background-color: #87c341; /* Banana green for buttons */
+  color: white;
+  padding: 15px; /* Set padding to 15px */
+  font-size: 24px; /* Adjust font size */
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.delete-button {
+  background-color: #87c341; /* Banana green for buttons */
+}
+
+
+.reaction-counts {
+  margin-top: 10px;
+}
+
