@@ -2,18 +2,22 @@ import React, { useState } from 'react';
 import './App.css';
 import logo from './monkeybook-logo.png'; // Import the logo image
 
-function Post({ content, likes, dislikes, onLike, onDislike, onDelete }) {
+function Post({ content, likes, dislikes, onLike, onDislike, onDelete, onEdit, onSave }) {
   return (
     <div className="post">
       <div className="content">{content}</div>
       <div className="buttons-container">
-        <button className="button" onClick={onLike}>🍌</button> {/* Single banana emoji */}
-        <button className="button" onClick={onDislike}>💩</button>
-        <button className="button delete-button" onClick={onDelete}>🗑️</button> {/* Delete button */}
-      </div>
-      <div className="reaction-counts">
-        <span className="likes-count">{likes}</span> + 
-        <span className="dislikes-count">{dislikes}</span>
+        <div className="button-with-count">
+          <button className="button add-post-button" onClick={onLike}>🍌</button>
+          <span className="count">{likes}</span>
+        </div>
+        <div className="button-with-count">
+          <button className="button add-post-button" onClick={onDislike}>💩</button>
+          <span className="count">{dislikes}</span>
+        </div>
+        <button className="button add-post-button delete-button" onClick={onDelete}>🗑️</button> {/* Delete button */}
+        <button className="button add-post-button edit-button" onClick={onEdit}>✏️</button> {/* Edit button */}
+        <button className="button add-post-button save-button" onClick={onSave}>Save</button> {/* Save button */}
       </div>
     </div>
   );
@@ -21,9 +25,8 @@ function Post({ content, likes, dislikes, onLike, onDislike, onDelete }) {
 
 function App() {
   const [posts, setPosts] = useState([
-    { content: "This is the first monkey post!", likes: 0, dislikes: 0 },
-    { content: "This is the second monkey post!", likes: 0, dislikes: 0 },
-    { content: "This is the third monkey post!", likes: 0, dislikes: 0 }
+    { content: 'First post', likes: 0, dislikes: 0 },
+    { content: 'Second post', likes: 0, dislikes: 0 },
   ]);
   const [newPostContent, setNewPostContent] = useState("");
 
@@ -44,6 +47,19 @@ function App() {
     setPosts(newPosts);
   };
 
+  const handleEdit = (index) => {
+    const newContent = prompt("Edit your post:", posts[index].content);
+    if (newContent !== null) {
+      const newPosts = [...posts];
+      newPosts[index].content = newContent;
+      setPosts(newPosts);
+    }
+  };
+
+  const handleSave = (index) => {
+    // Implement save functionality
+  };
+
   const handlePost = () => {
     if (newPostContent.trim() !== "") {
       const newPosts = [{ content: newPostContent, likes: 0, dislikes: 0 }, ...posts];
@@ -54,7 +70,10 @@ function App() {
 
   return (
     <div className="App">
-      <img src={logo} alt="MonkeyBook Logo" className="logo" /> {/* Add the logo */}
+      <header className="App-header">
+        <img src={logo} className="App-logo" alt="logo" />
+      </header>
+      <textarea className="fixed-textarea" placeholder="Type your text here..."></textarea>
       <div className="content-container">
         <div className="post-field">
           <input
@@ -75,6 +94,8 @@ function App() {
               onLike={() => handleLike(index)}
               onDislike={() => handleDislike(index)}
               onDelete={() => handleDelete(index)}
+              onEdit={() => handleEdit(index)}
+              onSave={() => handleSave(index)}
             />
           ))}
         </div>
