@@ -13,7 +13,7 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error, errorInfo) {
     // You can also log the error to an error reporting service
-    console.error('ErrorBoundary caught an error', error, errorInfo);
+    console.error("ErrorBoundary caught an error", error, errorInfo);
   }
 
   render() {
@@ -27,7 +27,6 @@ class ErrorBoundary extends Component {
 }
 
 export default ErrorBoundary;
-```
 
 // filepath: /Users/spectorclef/Downloads/monkeybook/src/index.js
 import React from 'react';
@@ -47,3 +46,5 @@ root.render(
 );
 
 reportWebVitals();
+
+const newObj = Object.assign({}, oldObj);

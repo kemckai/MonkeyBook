@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import logo from './monkeybook-logo.png'; // Ensure the correct import
-import config from './config.js';  // Ensure the correct import
-import { getUsers, createUser, updateUser, deleteUser } from './api/userApi.js';  // Add the .js extension
+import { getUsers, createUser, updateUser, deleteUser } from './api/userApi.js';  // Ensure the correct import
+import ErrorBoundary from './ErrorBoundary.js'; // Ensure the correct import
 
 function Post({ content, likes, dislikes, onLike, onDislike, onDelete, onEdit, onSave }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -45,27 +45,15 @@ function App() {
     const checkConnection = async () => {
       try {
         const response = await fetch('/api/check-connection');
-        const data = await response.json();
-        setDbStatus(data.status);
-      } catch (err) {
-        setDbStatus('disconnected');
-        console.error('Failed to check database connection:', err);
+        const status = await response.json();
+        setDbStatus(status);
+      } catch (error) {
+        console.error('Error checking connection:', error);
       }
     };
 
     checkConnection();
-    fetchUsers();
   }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const users = await getUsers();
-      console.log('Fetched users:', users); // Debugging
-      setUsers(users);
-    } catch (error) {
-      console.error('Error fetching users:', error);
-    }
-  };
 
   const handleCreateUser = async () => {
     try {
@@ -88,146 +76,57 @@ function App() {
     }
   };
 
-  const handleDeleteUser = async (id) => {
-    try {
-      await deleteUser(id);
-      console.log('Deleted user:', id); // Debugging
-      setUsers(users.filter((u) => u._id !== id));
-    } catch (error) {
-      console.error('Error deleting user:', error);
-    }
-  };
-
-  const handleCreatePost = () => {
-    console.log('Creating post with content:', newPostContent); // Debugging
-    const newPost = {
-      content: newPostContent,
-      likes: 0,
-      dislikes: 0,
-    };
-    setPosts([...posts, newPost]);
-    setNewPostContent(''); // Clear the input after creating the post
-  };
-
-  const handleLike = (index) => {
-    const updatedPosts = [...posts];
-    updatedPosts[index].likes += 1;
-    setPosts(updatedPosts);
-  };
-
-  const handleDislike = (index) => {
-    const updatedPosts = [...posts];
-    updatedPosts[index].dislikes += 1;
-    setPosts(updatedPosts);
-  };
-
-  const handleDelete = (index) => {
-    const updatedPosts = posts.filter((_, i) => i !== index);
-    setPosts(updatedPosts);
-  };
-
-  const handleEdit = (index) => {
-    // Logic to handle edit
-  };
-
-  const handleSave = (index, newContent) => {
-    const updatedPosts = [...posts];
-    updatedPosts[index].content = newContent;
-    setPosts(updatedPosts);
+  const handlePost = (content) => {
+    setPosts([...posts, { content, likes: 0, dislikes: 0 }]);
   };
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-      </header>
-      
-      <div className="content-container">
-        <div className="post-field">
-          <input
-            type="text"
+    <ErrorBoundary>
+      <div className="App">
+        <header className="App-header">
+          <img src={logo} className="App-logo" alt="logo" />
+          <textarea
+            className="fixed-textarea"
+            placeholder="Type your text here..."
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
-            placeholder="Write a new post..."
           />
-          <button className="post-button" onClick={handlePost}>Post</button>
-        </div>
-        <div id="posts-container">
+          <button onClick={() => handlePost(newPostContent)}>Post</button>
           {posts.map((post, index) => (
             <Post
               key={index}
               content={post.content}
               likes={post.likes}
               dislikes={post.dislikes}
-              onLike={() => handleLike(index)}
-              onDislike={() => handleDislike(index)}
-              onDelete={() => handleDelete(index)}
-              onEdit={() => handleEdit(index)}
-              onSave={() => handleSave(index)}
+              onLike={() => {
+                const newPosts = [...posts];
+                newPosts[index].likes += 1;
+                setPosts(newPosts);
+              }}
+              onDislike={() => {
+                const newPosts = [...posts];
+                newPosts[index].dislikes += 1;
+                setPosts(newPosts);
+              }}
+              onDelete={() => {
+                const newPosts = posts.filter((_, i) => i !== index);
+                setPosts(newPosts);
+              }}
+              onEdit={(newContent) => {
+                const newPosts = [...posts];
+                newPosts[index].content = newContent;
+                setPosts(newPosts);
+              }}
+              onSave={(newContent) => {
+                const newPosts = [...posts];
+                newPosts[index].content = newContent;
+                setPosts(newPosts);
+              }}
             />
           ))}
-        </div>
+        </header>
       </div>
-      <div>
-        <img src={logo} alt="Monkeybook Logo" /> {/* Add the logo image */}
-      </div>
-      <div>
-        <input
-          type="text"
-          placeholder="Name"
-          value={newUser.name}
-          onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={newUser.email}
-          onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={newUser.password}
-          onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-        />
-        <button onClick={handleCreateUser}>Create User</button>
-      </div>
-      <div>
-        <input
-          type="text"
-          placeholder="New Post Content"
-          value={newPostContent}
-          onChange={(e) => setNewPostContent(e.target.value)}
-        />
-        <button onClick={handleCreatePost}>Create Post</button>
-      </div>
-      <div id="posts-container">
-        {posts.map((post, index) => (
-          <Post
-            key={index}
-            content={post.content}
-            likes={post.likes}
-            dislikes={post.dislikes}
-            onLike={() => handleLike(index)}
-            onDislike={() => handleDislike(index)}
-            onDelete={() => handleDelete(index)}
-            onEdit={() => handleEdit(index)}
-            onSave={(newContent) => handleSave(index, newContent)}
-          />
-        ))}
-      </div>
-      <ul>
-        {users.map((user) => (
-          <li key={user._id}>
-            {user.name} - {user.email}
-            <button onClick={() => handleUpdateUser(user._id, { ...user, name: 'Updated Name' })}>
-              Update
-            </button>
-            <button onClick={() => handleDeleteUser(user._id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
+    </ErrorBoundary>
   );
 }
 
