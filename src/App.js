@@ -142,7 +142,10 @@ function App() {
       <div className={`db-status ${dbStatus === 'connected' ? 'connected' : 'disconnected'}`}>
         Database Status: {dbStatus}
       </div>
-      <div className="user-form-container"> {/* Add this class */}
+      <div>
+        <img src={logo} alt="Monkeybook Logo" /> {/* Add the logo image */}
+      </div>
+      <div>
         <input
           type="text"
           placeholder="Name"
