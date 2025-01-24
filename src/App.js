@@ -73,7 +73,7 @@ function App() {
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
       </header>
-      <textarea className="fixed-textarea" placeholder="Type your text here..."></textarea>
+      
       <div className="content-container">
         <div className="post-field">
           <input
