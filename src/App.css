@@ -2,9 +2,15 @@
   text-align: center;
 }
 
+
+
 .App-logo {
-  height: 40vmin;
+  height: 20vmin;
   pointer-events: none;
+  width: 10; /* Make the logo 20% smaller */
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -14,8 +20,8 @@
 }
 
 .App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+  background-color: #f5f108;
+  min-height: 20vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -23,7 +29,9 @@
   font-size: calc(10px + 2vmin);
   color: white;
 }
-
+.App-header {
+  background-color: unset;
+}
 .App-link {
   color: #61dafb;
 }
