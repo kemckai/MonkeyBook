@@ -3,8 +3,9 @@
 }
 
 .App-logo {
-  height: 40vmin;
+  height: 92px;  /* Increased from 80px by 15% */
   pointer-events: none;
+  margin: 10px 0;  /* Add some vertical margin */
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -14,14 +15,16 @@
 }
 
 .App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+  background-color: #ffeb3b;
+  min-height: 0;
   display: flex;
-  flex-direction: column;
+  flex-direction: row; /* Change to row for horizontal layout */
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;  /* Change from center to flex-start */
+  padding-left: 20px;  /* Add padding to prevent logo from touching the edge */
+  width: 100%;
   font-size: calc(10px + 2vmin);
-  color: white;
+  color: rgb(231, 235, 12);
 }
 
 .App-link {
@@ -79,10 +82,37 @@
 }
 
 .post {
-  width: 120%; /* Increase width by 20% */
-  margin: 10px auto; /* Center the post */
+  margin: 10px auto;
   padding: 10px;
   border: 1px solid #ccc;
   border-radius: 5px;
   background-color: #f9f9f9;
+}
+
+.post .content input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 2px solid #4a4a4a;
+  border-radius: 4px;
+  font-size: 16px;
+  margin-bottom: 8px;
+  background-color: #ffffff;
+}
+
+.post .content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.post .content input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.post .content button {
+  align-self: flex-end;
+  margin-top: 8px;
 }

@@ -3,9 +3,26 @@ import './App.css';
 import logo from './monkeybook-logo.png'; // Import the logo image
 
 function Post({ content, likes, dislikes, onLike, onDislike, onDelete, onEdit, onSave }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedContent, setEditedContent] = useState(content);
+
   return (
     <div className="post">
-      <div className="content">{content}</div>
+      {isEditing ? (
+        <div className="content">
+          <input
+            type="text"
+            value={editedContent}
+            onChange={(e) => setEditedContent(e.target.value)}
+          />
+          <button className="button add-post-button" onClick={() => {
+            onSave(editedContent);
+            setIsEditing(false);
+          }}>Save</button>
+        </div>
+      ) : (
+        <div className="content">{content}</div>
+      )}
       <div className="buttons-container">
         <div className="button-with-count">
           <button className="button add-post-button" onClick={onLike}>🍌</button>
@@ -16,8 +33,10 @@ function Post({ content, likes, dislikes, onLike, onDislike, onDelete, onEdit, o
           <span className="count">{dislikes}</span>
         </div>
         <button className="button add-post-button delete-button" onClick={onDelete}>🗑️</button> {/* Delete button */}
-        <button className="button add-post-button edit-button" onClick={onEdit}>✏️</button> {/* Edit button */}
-        <button className="button add-post-button save-button" onClick={onSave}>Save</button> {/* Save button */}
+        <button className="button add-post-button edit-button" onClick={() => {
+          setIsEditing(true);
+          setEditedContent(content);
+        }}>✏️</button> {/* Edit button */}
       </div>
     </div>
   );
@@ -25,10 +44,11 @@ function Post({ content, likes, dislikes, onLike, onDislike, onDelete, onEdit, o
 
 function App() {
   const [posts, setPosts] = useState([
-    { content: 'First post', likes: 0, dislikes: 0 },
-    { content: 'Second post', likes: 0, dislikes: 0 },
+    { id: 1, content: 'First post', likes: 0, dislikes: 0 },
+    { id: 2, content: 'Second post', likes: 0, dislikes: 0 },
   ]);
   const [newPostContent, setNewPostContent] = useState("");
+  const [editingId, setEditingId] = useState(null);  // Add this line
 
   const handleLike = (index) => {
     const newPosts = [...posts];
@@ -48,22 +68,27 @@ function App() {
   };
 
   const handleEdit = (index) => {
-    const newContent = prompt("Edit your post:", posts[index].content);
-    if (newContent !== null) {
+    setEditingId(posts[index].id);  // Change this line
+  };
+
+  const handleSave = (index, newContent) => {
+    if (newContent.trim() !== "") {
       const newPosts = [...posts];
       newPosts[index].content = newContent;
       setPosts(newPosts);
+      setEditingId(null);  // Add this line
     }
-  };
-
-  const handleSave = (index) => {
-    // Implement save functionality
   };
 
   const handlePost = () => {
     if (newPostContent.trim() !== "") {
-      const newPosts = [{ content: newPostContent, likes: 0, dislikes: 0 }, ...posts];
-      setPosts(newPosts);
+      const newPost = {
+        id: Date.now(), // Simple way to generate unique IDs
+        content: newPostContent,
+        likes: 0,
+        dislikes: 0
+      };
+      setPosts([newPost, ...posts]);
       setNewPostContent("");
     }
   };
@@ -73,7 +98,6 @@ function App() {
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
       </header>
-      <textarea className="fixed-textarea" placeholder="Type your text here..."></textarea>
       <div className="content-container">
         <div className="post-field">
           <input
@@ -95,7 +119,7 @@ function App() {
               onDislike={() => handleDislike(index)}
               onDelete={() => handleDelete(index)}
               onEdit={() => handleEdit(index)}
-              onSave={() => handleSave(index)}
+              onSave={(newContent) => handleSave(index, newContent)}
             />
           ))}
         </div>
