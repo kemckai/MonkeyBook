@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import './App.css';
 import logo from './monkeybook-logo.png'; // Ensure the correct import
 import { getUsers, createUser, updateUser, deleteUser } from './api/userApi.js';  // Add the .js extension
@@ -34,6 +35,9 @@ function Post({ content, likes, dislikes, onLike, onDislike, onDelete, onEdit, o
 }
 
 function App() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [users, setUsers] = useState([]);
   const [newUser, setNewUser] = useState({ name: '', email: '', password: '' });
   const [newPostContent, setNewPostContent] = useState(''); // Define newPostContent state
@@ -58,11 +62,10 @@ function App() {
 
   const fetchUsers = async () => {
     try {
-      const users = await getUsers();
-      console.log('Fetched users:', users); // Debugging
-      setUsers(users);
+      const response = await axios.get('http://localhost:5001/api/users');
+      setUsers(response.data);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('There was an error fetching the users!', error);
     }
   };
 
@@ -135,8 +138,54 @@ function App() {
     setPosts(updatedPosts);
   };
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const newUser = { name, email, password };
+    try {
+      await axios.post('http://localhost:5001/api/register', newUser);
+      alert('User registered successfully');
+      fetchUsers(); // Fetch users after registration
+    } catch (error) {
+      console.error('There was an error registering the user!', error);
+    }
+  };
+
   return (
     <div className="App">
+      <h1>Register</h1>
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>Name:</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div>
+          <label>Email:</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        <div>
+          <label>Password:</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <button type="submit">Register</button>
+      </form>
+      <h2>Users</h2>
+      <ul>
+        {users.map((user) => (
+          <li key={user._id}>{user.name} - {user.email}</li>
+        ))}
+      </ul>
       <h1>User Management</h1>
       <div className={`db-status ${dbStatus === 'connected' ? 'connected' : 'disconnected'}`}>
         Database Status: {dbStatus}

@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import axios from 'axios';
+import Post from '../models/Post';
 
 const router = express.Router();
 const API_URL = 'http://localhost:5001/api/users';
@@ -46,14 +47,14 @@ export const deleteUser = async (id) => {
 };
 
 // Create a new user
-router.post('/users', async (req, res) => {
+router.post('/register', async (req, res) => {
     try {
         const { name, email, password } = req.body;
         const newUser = new User({ name, email, password });
         await newUser.save();
         res.status(201).json(newUser);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating user', error });
     }
 });
 
@@ -108,6 +109,28 @@ router.delete('/users/:id', async (req, res) => {
         res.status(200).json({ message: 'User deleted successfully' });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+// Create a new post
+router.post('/posts', async (req, res) => {
+    try {
+        const { content, author } = req.body;
+        const newPost = new Post({ content, author });
+        await newPost.save();
+        res.status(201).json(newPost);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating post', error });
+    }
+});
+
+// Get all posts
+router.get('/posts', async (req, res) => {
+    try {
+        const posts = await Post.find().populate('author');
+        res.json(posts);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching posts', error });
     }
 });
 
