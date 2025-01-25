@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import logo from './monkeybook-logo.png'; // Ensure the correct import
-import config from './config.js';  // Ensure the correct import
 import { getUsers, createUser, updateUser, deleteUser } from './api/userApi.js';  // Add the .js extension
 
 function Post({ content, likes, dislikes, onLike, onDislike, onDelete, onEdit, onSave }) {

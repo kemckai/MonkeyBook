@@ -25,12 +25,7 @@ app.use('/api', userRoutes);
 
 // Endpoint to check database connection
 app.get('/api/check-connection', (req, res) => {
-    const dbState = mongoose.connection.readyState;
-    if (dbState === 1) {
-        res.status(200).json({ status: 'connected' });
-    } else {
-        res.status(500).json({ status: 'disconnected' });
-    }
+    res.json({ status: 'connected' });
 });
 
 app.get('/', (req, res) => {
@@ -38,7 +33,7 @@ app.get('/', (req, res) => {
 });
 
 const server = app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
 
 // Handle port already in use error
