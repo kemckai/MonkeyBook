@@ -1,0 +1,7 @@
+node_modules/
+client/dist/
+server/monkeybook.db
+server/monkeybook.db-shm
+server/monkeybook.db-wal
+server/uploads/
+.env
