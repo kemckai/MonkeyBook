@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Post from '../components/Post';
 import PostComposer from '../components/PostComposer';
@@ -8,8 +7,7 @@ import { useMonkey } from '../context/MonkeyContext';
 import { getPosts, createPost, deletePost, toggleReaction, flingPost, getMonkeyOfTheDay } from '../api';
 
 export default function Feed() {
-  const { monkey, loading: identityLoading } = useMonkey();
-  const navigate = useNavigate();
+  const { monkey } = useMonkey();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState('fresh');
@@ -23,10 +21,6 @@ export default function Feed() {
   const observerRef = useRef(null);
   const sentinelRef = useRef(null);
 
-  useEffect(() => {
-    if (!identityLoading && !monkey) navigate('/');
-  }, [monkey, identityLoading, navigate]);
-
   function pushToast(message, type = 'info') {
     const id = `${Date.now()}-${Math.random()}`;
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -39,7 +33,11 @@ export default function Feed() {
     if (!monkey) return;
     if (resetCursor) setLoading(true);
     try {
-      const data = await getPosts({ sort: sort === 'trending' ? 'trending' : undefined, cursor: resetCursor ? undefined : cursor });
+      const data = await getPosts({
+        sort: sort === 'trending' ? 'trending' : undefined,
+        feed: sort === 'friends' ? 'friends' : undefined,
+        cursor: resetCursor ? undefined : cursor,
+      });
       if (resetCursor) {
         setPosts(data.posts);
       } else {
@@ -150,7 +148,7 @@ export default function Feed() {
     }
   }
 
-  if (identityLoading || loading) {
+  if (loading) {
     return <div className="app"><Header /><div className="loading">Loading the jungle...</div></div>;
   }
 
@@ -168,15 +166,16 @@ export default function Feed() {
         )}
         <div className="feed-tabs">
           <button className={`tab ${sort === 'fresh' ? 'active' : ''}`} disabled={switchingSort} onClick={() => setSort('fresh')}>Fresh</button>
+          <button className={`tab ${sort === 'friends' ? 'active' : ''}`} disabled={switchingSort} onClick={() => setSort('friends')}>Friends</button>
           <button className={`tab ${sort === 'trending' ? 'active' : ''}`} disabled={switchingSort} onClick={() => setSort('trending')}>Trending</button>
           <span className="banana-budget">🍌 {bananasRemaining} left today</span>
         </div>
         <PostComposer onPost={handlePost} />
         {posts.length === 0 ? (
-          <div className="empty-feed"><p>No posts yet. Be the first monkey to fling something.</p></div>
+          <div className="empty-feed"><p>{sort === 'friends' ? 'No posts from friends yet. Add some monkeys!' : 'No posts yet. Be the first monkey to fling something.'}</p></div>
         ) : (
           posts.map(post => (
-            <Post key={post.id} post={post} onReact={handleReact} onDelete={handleDelete} onFling={handleFling} bananasRemaining={bananasRemaining} />
+            <Post key={post.id} post={post} onReact={handleReact} onDelete={handleDelete} onFling={handleFling} bananasRemaining={bananasRemaining} onReported={(msg, type) => pushToast(msg, type || 'success')} />
           ))
         )}
         <div ref={sentinelRef} className="scroll-sentinel" />

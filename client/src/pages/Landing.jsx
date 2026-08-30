@@ -1,17 +1,15 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useMonkey } from '../context/MonkeyContext';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/MonkeyContext';
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { monkey } = useMonkey();
+  const { user, monkey } = useAuth();
 
   function handleEnter() {
-    if (monkey) {
-      navigate('/feed');
-    } else {
-      navigate('/join');
-    }
+    if (user && monkey) navigate('/feed');
+    else if (user) navigate('/join');
+    else navigate('/register');
   }
 
   return (
@@ -29,8 +27,8 @@ export default function Landing() {
             <span>Get a random monkey identity</span>
           </div>
           <div className="feature">
-            <span className="feature-emoji">💩</span>
-            <span>Be brutally honest</span>
+            <span className="feature-emoji">👥</span>
+            <span>Add friends and see their posts</span>
           </div>
           <div className="feature">
             <span className="feature-emoji">🍌</span>
@@ -38,13 +36,21 @@ export default function Landing() {
           </div>
         </div>
         <button className="landing-cta" onClick={handleEnter}>
-          {monkey ? 'Back to the Jungle' : 'Enter the Jungle'}
+          {user && monkey ? 'Back to the Jungle' : user ? 'Pick Your Monkey' : 'Enter the Jungle'}
         </button>
-        {monkey && (
+        {!user && (
           <p className="landing-returning">
-            Welcome back, {monkey.monkey_emoji} {monkey.monkey_name}
+            Already have an account? <Link to="/login">Log in</Link>
           </p>
         )}
+        {user && monkey && (
+          <p className="landing-returning">
+            Welcome back, {monkey.monkey_emoji} {monkey.display_name || monkey.monkey_name}
+          </p>
+        )}
+        <p className="landing-legal">
+          <Link to="/terms">Terms</Link> · <Link to="/privacy">Privacy</Link>
+        </p>
       </div>
     </div>
   );

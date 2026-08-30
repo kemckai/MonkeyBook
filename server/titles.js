@@ -15,18 +15,18 @@ const TITLE_THRESHOLDS = [
   { id: 'generous', label: 'Generous Ape', check: (stats) => stats.bananas_given >= 100 },
 ];
 
-function computeTitle(monkeyId) {
+async function computeTitle(monkeyId) {
   const today = new Date().toISOString().split('T')[0];
 
   const stats = {
-    poops_given: db.prepare(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ? AND type = 'poop'`).get(monkeyId).c,
-    bananas_given: db.prepare(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ? AND type = 'banana'`).get(monkeyId).c,
-    reactions_given: db.prepare(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ?`).get(monkeyId).c,
-    bananas_received: db.prepare(`SELECT COUNT(*) as c FROM reactions r JOIN posts p ON r.post_id = p.id WHERE p.monkey_id = ? AND r.type = 'banana'`).get(monkeyId).c,
-    poops_received: db.prepare(`SELECT COUNT(*) as c FROM reactions r JOIN posts p ON r.post_id = p.id WHERE p.monkey_id = ? AND r.type = 'poop'`).get(monkeyId).c,
-    total_posts: db.prepare(`SELECT COUNT(*) as c FROM posts WHERE monkey_id = ?`).get(monkeyId).c,
-    posts_today: db.prepare(`SELECT COUNT(*) as c FROM posts WHERE monkey_id = ? AND DATE(created_at) = ?`).get(monkeyId, today).c,
-    flings_given: db.prepare(`SELECT COUNT(*) as c FROM flings WHERE monkey_id = ?`).get(monkeyId).c,
+    poops_given: (await db.get(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ? AND type = 'poop'`, monkeyId)).c,
+    bananas_given: (await db.get(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ? AND type = 'banana'`, monkeyId)).c,
+    reactions_given: (await db.get(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ?`, monkeyId)).c,
+    bananas_received: (await db.get(`SELECT COUNT(*) as c FROM reactions r JOIN posts p ON r.post_id = p.id WHERE p.monkey_id = ? AND r.type = 'banana'`, monkeyId)).c,
+    poops_received: (await db.get(`SELECT COUNT(*) as c FROM reactions r JOIN posts p ON r.post_id = p.id WHERE p.monkey_id = ? AND r.type = 'poop'`, monkeyId)).c,
+    total_posts: (await db.get(`SELECT COUNT(*) as c FROM posts WHERE monkey_id = ?`, monkeyId)).c,
+    posts_today: (await db.get(`SELECT COUNT(*) as c FROM posts WHERE monkey_id = ? AND DATE(created_at) = ?`, monkeyId, today)).c,
+    flings_given: (await db.get(`SELECT COUNT(*) as c FROM flings WHERE monkey_id = ?`, monkeyId)).c,
   };
 
   for (const t of TITLE_THRESHOLDS) {
@@ -43,11 +43,8 @@ function computeAgePrefix(createdAt) {
   return null;
 }
 
-/** True if monkey has posted before and last post was 3+ calendar days ago. */
-function isLazyMonkey(monkeyId) {
-  const row = db.prepare(`
-    SELECT MAX(created_at) as last_post FROM posts WHERE monkey_id = ?
-  `).get(monkeyId);
+async function isLazyMonkey(monkeyId) {
+  const row = await db.get(`SELECT MAX(created_at) as last_post FROM posts WHERE monkey_id = ?`, monkeyId);
   if (!row || !row.last_post) return false;
   const raw = String(row.last_post);
   const last = Date.parse(raw.includes('T') ? raw : raw.replace(' ', 'T'));
@@ -56,11 +53,11 @@ function isLazyMonkey(monkeyId) {
   return daysSince >= 3;
 }
 
-function getDisplayName(monkey) {
+async function getDisplayName(monkey) {
   let name = monkey.monkey_name;
   const agePrefix = computeAgePrefix(monkey.created_at);
   if (agePrefix) name = `${agePrefix} ${name}`;
-  if (isLazyMonkey(monkey.id)) name = `Lazy ${name}`;
+  if (await isLazyMonkey(monkey.id)) name = `Lazy ${name}`;
   return name;
 }
 

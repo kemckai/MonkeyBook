@@ -2,9 +2,23 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import MonkeyAvatar from './MonkeyAvatar';
 import BlurredPost from './BlurredPost';
+import { reportPost } from '../api';
 
-export default function Post({ post, onReact, onDelete, onFling, bananasRemaining }) {
+const REPORT_REASONS = [
+  { value: 'spam', label: 'Spam' },
+  { value: 'harassment', label: 'Harassment' },
+  { value: 'hate', label: 'Hate speech' },
+  { value: 'nudity', label: 'Nudity' },
+  { value: 'violence', label: 'Violence' },
+  { value: 'other', label: 'Other' },
+];
+
+export default function Post({ post, onReact, onDelete, onFling, bananasRemaining, onReported }) {
   const [blurRevealed, setBlurRevealed] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState('spam');
+  const [reportDetails, setReportDetails] = useState('');
+  const [reporting, setReporting] = useState(false);
   const [pending, setPending] = useState({
     banana: false,
     poop: false,
@@ -39,6 +53,19 @@ export default function Post({ post, onReact, onDelete, onFling, bananasRemainin
       await fn();
     } finally {
       setPending((prev) => ({ ...prev, [key]: false }));
+    }
+  }
+
+  async function handleReport() {
+    setReporting(true);
+    try {
+      await reportPost(post.id, reportReason, reportDetails);
+      setShowReport(false);
+      onReported?.('Report submitted. Thanks for keeping the jungle safe.');
+    } catch (err) {
+      onReported?.(err.message || 'Report failed.', 'error');
+    } finally {
+      setReporting(false);
     }
   }
 
@@ -81,12 +108,24 @@ export default function Post({ post, onReact, onDelete, onFling, bananasRemainin
           <button className="reaction-btn" disabled={pending.fling} onClick={() => withPending('fling', () => onFling(post.id))} aria-label="Fling">
             {pending.fling ? '⏳' : '🙊'} <span className="count">{post.fling_count || 0}</span>
           </button>
+          {!post.is_mine && (
+            <button className="reaction-btn report-btn" onClick={() => setShowReport(!showReport)} aria-label="Report post">🚩</button>
+          )}
           {post.is_mine && (
             <button className="delete-btn" disabled={pending.delete} onClick={() => withPending('delete', () => onDelete(post.id))} aria-label="Delete post">
               {pending.delete ? '⏳' : '🗑️'}
             </button>
           )}
         </div>
+        {showReport && (
+          <div className="report-form">
+            <select value={reportReason} onChange={(e) => setReportReason(e.target.value)}>
+              {REPORT_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
+            <input placeholder="Details (optional)" value={reportDetails} onChange={(e) => setReportDetails(e.target.value.slice(0, 200))} />
+            <button className="btn-primary btn-sm" disabled={reporting} onClick={handleReport}>{reporting ? '...' : 'Submit Report'}</button>
+          </div>
+        )}
       </BlurredPost>
     </article>
   );

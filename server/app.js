@@ -3,16 +3,20 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
-const multer = require('multer');
 const fs = require('fs');
 
 const { init: initWS, broadcast } = require('./ws');
+const authRoutes = require('./routes/auth');
 const identityRoutes = require('./routes/identity');
 const postRoutes = require('./routes/posts');
 const reactionRoutes = require('./routes/reactions');
 const troopRoutes = require('./routes/troops');
 const notificationRoutes = require('./routes/notifications');
 const motdRoutes = require('./routes/motd');
+const friendRoutes = require('./routes/friends');
+const reportRoutes = require('./routes/reports');
+const adminRoutes = require('./routes/admin');
+const { upload, useR2, uploadToR2, localUrl, uploadsDir } = require('./lib/storage');
 
 function createApp({ withStaticClient = true, withWebSocket = true } = {}) {
   const app = express();
@@ -30,39 +34,30 @@ function createApp({ withStaticClient = true, withWebSocket = true } = {}) {
   app.use(express.json());
   app.use(cookieParser());
 
-  const uploadsDir = path.join(__dirname, 'uploads');
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-
-  const storage = multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadsDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname);
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-    }
-  });
-  const upload = multer({
-    storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
-    fileFilter: (_req, file, cb) => {
-      const allowed = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-      cb(null, allowed.includes(file.mimetype));
-    }
-  });
-
   app.use('/uploads', express.static(uploadsDir));
   app.use('/api/uploads', express.static(uploadsDir));
 
-  app.post('/api/upload', upload.single('image'), (req, res) => {
+  app.post('/api/upload', upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No valid image' });
-    res.json({ url: `/api/uploads/${req.file.filename}` });
+    try {
+      const url = useR2() ? await uploadToR2(req.file) : localUrl(req.file.filename);
+      res.json({ url });
+    } catch (err) {
+      console.error('Upload failed:', err);
+      res.status(500).json({ error: 'Upload failed' });
+    }
   });
 
+  app.use('/api/auth', authRoutes);
   app.use('/api/identity', identityRoutes);
   app.use('/api/posts', postRoutes);
   app.use('/api/reactions', reactionRoutes);
   app.use('/api/troops', troopRoutes);
   app.use('/api/notifications', notificationRoutes);
   app.use('/api/monkey-of-the-day', motdRoutes);
+  app.use('/api/friends', friendRoutes);
+  app.use('/api/reports', reportRoutes);
+  app.use('/api/admin', adminRoutes);
 
   app.broadcast = broadcast;
 

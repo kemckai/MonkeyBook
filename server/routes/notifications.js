@@ -1,45 +1,26 @@
 const express = require('express');
 const db = require('../db');
+const { requireMonkey } = require('../lib/auth');
 
 const router = express.Router();
 
-function getMonkeyId(req) {
-  const token = req.cookies.monkey_token;
-  if (!token) return null;
-  const monkey = db.prepare('SELECT id FROM monkeys WHERE session_token = ?').get(token);
-  return monkey ? monkey.id : null;
-}
+router.get('/', requireMonkey(async (req, res) => {
+  const notifications = await db.all(
+    'SELECT * FROM notifications WHERE monkey_id = ? ORDER BY created_at DESC LIMIT 50',
+    req.monkey.id
+  );
+  const unread = (await db.get('SELECT COUNT(*) as c FROM notifications WHERE monkey_id = ? AND read = 0', req.monkey.id)).c;
+  res.json({ notifications, unread_count: unread });
+}));
 
-router.get('/', (req, res) => {
-  const monkeyId = getMonkeyId(req);
-  if (!monkeyId) return res.status(401).json({ error: 'No identity' });
-
-  const notifications = db.prepare(`
-    SELECT * FROM notifications
-    WHERE monkey_id = ?
-    ORDER BY created_at DESC
-    LIMIT 50
-  `).all(monkeyId);
-
-  const unreadCount = db.prepare('SELECT COUNT(*) as c FROM notifications WHERE monkey_id = ? AND read = 0').get(monkeyId).c;
-
-  res.json({ notifications, unread_count: unreadCount });
-});
-
-router.put('/:id/read', (req, res) => {
-  const monkeyId = getMonkeyId(req);
-  if (!monkeyId) return res.status(401).json({ error: 'No identity' });
-
-  db.prepare('UPDATE notifications SET read = 1 WHERE id = ? AND monkey_id = ?').run(req.params.id, monkeyId);
+router.put('/:id/read', requireMonkey(async (req, res) => {
+  await db.run('UPDATE notifications SET read = 1 WHERE id = ? AND monkey_id = ?', req.params.id, req.monkey.id);
   res.json({ ok: true });
-});
+}));
 
-router.put('/read-all', (req, res) => {
-  const monkeyId = getMonkeyId(req);
-  if (!monkeyId) return res.status(401).json({ error: 'No identity' });
-
-  db.prepare('UPDATE notifications SET read = 1 WHERE monkey_id = ?').run(monkeyId);
+router.put('/read-all', requireMonkey(async (req, res) => {
+  await db.run('UPDATE notifications SET read = 1 WHERE monkey_id = ?', req.monkey.id);
   res.json({ ok: true });
-});
+}));
 
 module.exports = router;

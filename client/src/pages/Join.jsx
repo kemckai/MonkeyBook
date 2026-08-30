@@ -1,23 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMonkey } from '../context/MonkeyContext';
+import { useAuth } from '../context/MonkeyContext';
 
 export default function Join() {
   const navigate = useNavigate();
-  const { monkey, claim, reroll } = useMonkey();
+  const { monkey, claim, reroll } = useAuth();
   const [preview, setPreview] = useState(null);
   const [rolling, setRolling] = useState(false);
-  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
-    if (monkey && !preview) {
+    if (monkey) {
       navigate('/feed');
       return;
     }
-    if (!preview && !monkey) {
-      claim().then(setPreview);
-    }
-  }, [monkey, preview, claim, navigate]);
+    claim().then(setPreview).catch(console.error);
+  }, [monkey, claim, navigate]);
 
   async function handleReroll() {
     setRolling(true);
@@ -30,7 +27,6 @@ export default function Join() {
   }
 
   function handleAccept() {
-    setEntered(true);
     navigate('/feed');
   }
 
@@ -53,7 +49,7 @@ export default function Join() {
           <span className="join-name">{preview.monkey_name}</span>
         </div>
         <p className="join-disclaimer">
-          This is you now. Nobody will know who's behind the monkey.
+          This is you now. Nobody will know who&apos;s behind the monkey.
         </p>
         <div className="join-actions">
           <button className="btn-accept" onClick={handleAccept}>

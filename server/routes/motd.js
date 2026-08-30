@@ -7,14 +7,14 @@ const router = express.Router();
 let cachedMotd = null;
 let cachedDate = null;
 
-router.get('/', (_req, res) => {
+router.get('/', async (_req, res) => {
   const today = new Date().toISOString().split('T')[0];
 
   if (cachedDate === today && cachedMotd) {
     return res.json(cachedMotd);
   }
 
-  const result = db.prepare(`
+  const result = await db.get(`
     SELECT m.id, m.monkey_name, m.monkey_emoji, m.avatar_seed, m.created_at,
       COUNT(r.id) as poop_count
     FROM monkeys m
@@ -24,7 +24,7 @@ router.get('/', (_req, res) => {
     GROUP BY m.id
     ORDER BY poop_count DESC
     LIMIT 1
-  `).get(today);
+  `, today);
 
   if (!result) {
     cachedMotd = null;
@@ -34,8 +34,8 @@ router.get('/', (_req, res) => {
 
   cachedMotd = {
     ...result,
-    display_name: getDisplayName(result),
-    reason: `Received ${result.poop_count} poop${result.poop_count > 1 ? 's' : ''} today`
+    display_name: await getDisplayName(result),
+    reason: `Received ${result.poop_count} poop${result.poop_count > 1 ? 's' : ''} today`,
   };
   cachedDate = today;
 

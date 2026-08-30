@@ -1,0 +1,84 @@
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/MonkeyContext';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+export default function Register() {
+  const navigate = useNavigate();
+  const { register, loginWithGoogle } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      await register(email, password);
+      navigate('/join');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleGoogle(response) {
+    setError('');
+    setLoading(true);
+    loginWithGoogle(response.credential)
+      .then(() => navigate('/join'))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }
+
+  React.useEffect(() => {
+    if (!GOOGLE_CLIENT_ID) return;
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.onload = () => {
+      window.google?.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogle,
+      });
+      window.google?.accounts.id.renderButton(
+        document.getElementById('google-signin'),
+        { theme: 'outline', size: 'large', width: 320 }
+      );
+    };
+    document.body.appendChild(script);
+    return () => script.remove();
+  }, []);
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <img src="/monkeybook-logo.png" alt="Monkeybook" className="auth-logo" />
+        <h1>Join Monkeybook</h1>
+        <p className="auth-sub">Create an account. Get a monkey. Cause chaos.</p>
+        {error && <p className="auth-error">{error}</p>}
+        <form onSubmit={handleSubmit} className="auth-form">
+          <input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type="password" placeholder="Password (8+ chars)" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
+          <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Creating...' : 'Sign Up'}</button>
+        </form>
+        {GOOGLE_CLIENT_ID && (
+          <>
+            <div className="auth-divider">or</div>
+            <div id="google-signin" className="google-btn-wrap" />
+          </>
+        )}
+        <p className="auth-footer">
+          Already have an account? <Link to="/login">Log in</Link>
+        </p>
+        <p className="auth-legal">
+          By signing up you agree to our <Link to="/terms">Terms</Link> and <Link to="/privacy">Privacy Policy</Link>.
+        </p>
+      </div>
+    </div>
+  );
+}

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useMonkey } from '../context/MonkeyContext';
+import { useAuth } from '../context/MonkeyContext';
 import { useTheme } from '../hooks/useTheme';
 import { getNotifications, markAllRead } from '../api';
 import MonkeyAvatar from './MonkeyAvatar';
 
 export default function Header() {
-  const { monkey } = useMonkey();
+  const { user, monkey, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const [unread, setUnread] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -51,7 +51,9 @@ export default function Header() {
       </Link>
       <nav className="header-nav">
         <Link to="/feed" className="nav-link">Feed</Link>
+        <Link to="/friends" className="nav-link">Friends</Link>
         <Link to="/troops" className="nav-link">Troops</Link>
+        {user?.is_admin && <Link to="/admin" className="nav-link">Admin</Link>}
       </nav>
       <div className="header-right">
         <button className="theme-toggle" onClick={toggle} aria-label="Toggle theme">
@@ -80,6 +82,7 @@ export default function Header() {
               <span className="monkey-name">{monkey.display_name || monkey.monkey_name}</span>
               {monkey.streak_count > 1 && <span className="streak">🔥{monkey.streak_count}</span>}
             </Link>
+            <button className="logout-btn" onClick={logout} title="Log out">⎋</button>
           </>
         )}
       </div>

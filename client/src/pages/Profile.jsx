@@ -5,7 +5,7 @@ import Post from '../components/Post';
 import MonkeyAvatar from '../components/MonkeyAvatar';
 import ToastStack from '../components/ToastStack';
 import { useMonkey } from '../context/MonkeyContext';
-import { getProfile, getMonkeyPosts, toggleReaction, deletePost, flingPost } from '../api';
+import { getProfile, getMonkeyPosts, toggleReaction, deletePost, flingPost, getFriendStatus, sendFriendRequest, acceptFriendRequest, declineFriendRequest } from '../api';
 
 export default function Profile() {
   const { id } = useParams();
@@ -17,6 +17,8 @@ export default function Profile() {
   const [bioText, setBioText] = useState('');
   const [toasts, setToasts] = useState([]);
   const [savingBio, setSavingBio] = useState(false);
+  const [friendStatus, setFriendStatus] = useState(null);
+  const [friendshipId, setFriendshipId] = useState(null);
 
   function pushToast(message, type = 'info') {
     const id = `${Date.now()}-${Math.random()}`;
@@ -36,7 +38,14 @@ export default function Profile() {
         pushToast('Could not load profile.', 'error');
       })
       .finally(() => setLoading(false));
-  }, [id]);
+
+    if (monkey && monkey.id !== parseInt(id, 10)) {
+      getFriendStatus(id).then((s) => {
+        setFriendStatus(s.status);
+        setFriendshipId(s.friendship_id || null);
+      }).catch(() => {});
+    }
+  }, [id, monkey]);
 
   async function handleSaveBio() {
     if (savingBio) return;
@@ -65,6 +74,34 @@ export default function Profile() {
 
   async function handleFling(postId) {
     await flingPost(postId);
+  }
+
+  async function handleFriendAction() {
+    try {
+      if (friendStatus === 'none') {
+        const res = await sendFriendRequest(parseInt(id, 10));
+        setFriendStatus('pending_outgoing');
+        setFriendshipId(res.friendship_id);
+        pushToast('Friend request sent!', 'success');
+      } else if (friendStatus === 'pending_incoming') {
+        await acceptFriendRequest(friendshipId);
+        setFriendStatus('friends');
+        pushToast('You are now friends!', 'success');
+      } else if (friendStatus === 'pending_outgoing') {
+        await declineFriendRequest(friendshipId);
+        setFriendStatus('none');
+        pushToast('Request cancelled.', 'info');
+      }
+    } catch (err) {
+      pushToast(err.message || 'Friend action failed.', 'error');
+    }
+  }
+
+  function friendButtonLabel() {
+    if (friendStatus === 'friends') return '✓ Friends';
+    if (friendStatus === 'pending_outgoing') return 'Cancel Request';
+    if (friendStatus === 'pending_incoming') return 'Accept Request';
+    return '+ Add Friend';
   }
 
   if (loading) {
@@ -103,6 +140,15 @@ export default function Profile() {
             <div className="stat"><span className="stat-value">{profile.post_count}</span><span className="stat-label">Posts</span></div>
             <div className="stat"><span className="stat-value">{profile.streak_count}</span><span className="stat-label">🔥 Streak</span></div>
           </div>
+          {!isMe && friendStatus && friendStatus !== 'self' && (
+            <button
+              className={`btn-primary btn-sm friend-profile-btn ${friendStatus === 'friends' ? 'disabled' : ''}`}
+              onClick={handleFriendAction}
+              disabled={friendStatus === 'friends'}
+            >
+              {friendButtonLabel()}
+            </button>
+          )}
         </div>
         <h3 className="section-heading">Posts</h3>
         {posts.length === 0 ? (
