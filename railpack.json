@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "packages": {
+    "node": "20"
+  },
+  "steps": {
+    "build": {
+      "commands": [
+        "...",
+        "npm install --prefix client --include=dev",
+        "npm install --prefix server",
+        "npm run build --prefix client"
+      ]
+    }
+  },
+  "deploy": {
+    "startCommand": "node server/index.js"
+  }
+}

@@ -2,11 +2,14 @@
   "name": "monkeybook",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "npm run dev --prefix client",
     "dev:server": "node server/index.js",
-    "build": "npm run build --prefix client",
+    "build": "npm install --prefix client --include=dev && npm install --prefix server && npm run build --prefix client",
     "start": "node server/index.js",
     "install:all": "npm install && npm install --prefix client && npm install --prefix server",
     "test:client": "npm run test --prefix client",

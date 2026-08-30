@@ -45,9 +45,22 @@ Without R2, uploads are stored on the server filesystem (not persistent across R
 
 ### 5. Deploy
 
-Railway runs `npm run build && node server/index.js` (see `railway.toml`).
+Railway uses **Railpack** and reads `railpack.json` in the repo root. The build installs client + server dependencies, builds the Vite app, then starts `node server/index.js`.
 
-Your app will be live at the Railway-provided URL.
+Set these variables on your **web service** (not just Postgres):
+
+| Variable | Value |
+|----------|-------|
+| `NODE_ENV` | `production` |
+| `ADMIN_EMAILS` | `hello@brightliaison.com` |
+| `CLIENT_ORIGIN` | Your Railway public URL |
+| `DATABASE_URL` | Auto-set if Postgres is linked to the service |
+
+**Important:** In Railway, open your **web service** → **Variables** → **Add Reference** → select the Postgres `DATABASE_URL`. Deploying Postgres alone does not inject it into the app unless linked.
+
+After the first deploy, copy your public URL and set `CLIENT_ORIGIN`, then redeploy.
+
+Optional: SMTP vars for password-reset emails (see `.env.example`).
 
 ## Google Sign-In setup (optional)
 
