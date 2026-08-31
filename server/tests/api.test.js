@@ -182,6 +182,14 @@ test('report post creates pending report', async () => {
   const reports = await admin.get('/api/admin/reports');
   assert.equal(reports.status, 200);
   assert.ok(reports.body.length >= 1);
+
+  const dashboard = await admin.get('/api/admin/stats');
+  assert.equal(dashboard.status, 200);
+  assert.ok(dashboard.body.totals);
+  assert.equal(typeof dashboard.body.totals.users, 'number');
+  assert.ok(dashboard.body.activity);
+  assert.ok(dashboard.body.queue);
+  assert.ok(Array.isArray(dashboard.body.recent_users));
 });
 
 test('logout invalidates server session', async () => {

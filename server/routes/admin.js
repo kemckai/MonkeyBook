@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../lib/auth');
+const { getAdminDashboard } = require('../lib/adminDashboard');
 const { broadcast } = require('../ws');
 
 const router = express.Router();
@@ -22,16 +23,8 @@ router.get('/reports', requireAdmin(async (_req, res) => {
 }));
 
 router.get('/stats', requireAdmin(async (_req, res) => {
-  const users = await db.get('SELECT COUNT(*) as c FROM users');
-  const monkeys = await db.get('SELECT COUNT(*) as c FROM monkeys');
-  const posts = await db.get('SELECT COUNT(*) as c FROM posts');
-  const pending = await db.get("SELECT COUNT(*) as c FROM reports WHERE status = 'pending'");
-  res.json({
-    users: users.c,
-    monkeys: monkeys.c,
-    posts: posts.c,
-    pending_reports: pending.c,
-  });
+  const dashboard = await getAdminDashboard();
+  res.json(dashboard);
 }));
 
 router.post('/reports/:id/dismiss', requireAdmin(async (req, res) => {
