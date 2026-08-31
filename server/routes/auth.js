@@ -7,6 +7,7 @@ const {
   verifyPassword,
   createMonkeyForUser,
   issueSession,
+  invalidateUserSession,
   isAdminEmail,
   getUser,
   getMonkey,
@@ -15,6 +16,7 @@ const {
   setMonkeyCookie,
   requireUser,
 } = require('../lib/auth');
+const { authLimiter, authStrictLimiter } = require('../lib/rateLimit');
 const { enrichMonkey } = require('../lib/monkey');
 const { generateMonkeyIdentity } = require('../monkeys');
 const { enqueue, JOB_TYPES } = require('../lib/queue');
@@ -37,7 +39,7 @@ router.get('/me', async (req, res) => {
   });
 });
 
-router.post('/register', async (req, res) => {
+router.post('/register', authLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Invalid email' });
@@ -66,7 +68,7 @@ router.post('/register', async (req, res) => {
   });
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', authStrictLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
@@ -89,7 +91,7 @@ router.post('/login', async (req, res) => {
   });
 });
 
-router.post('/google', async (req, res) => {
+router.post('/google', authLimiter, async (req, res) => {
   if (!googleClient) return res.status(503).json({ error: 'Google sign-in not configured' });
 
   const { credential } = req.body;
@@ -131,12 +133,14 @@ router.post('/google', async (req, res) => {
   });
 });
 
-router.post('/logout', (_req, res) => {
+router.post('/logout', async (req, res) => {
+  const user = await getUser(req);
+  if (user) await invalidateUserSession(user.id);
   clearAuthCookies(res);
   res.json({ ok: true });
 });
 
-router.post('/forgot-password', async (req, res) => {
+router.post('/forgot-password', authStrictLimiter, async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
 
@@ -157,7 +161,7 @@ router.post('/forgot-password', async (req, res) => {
   res.json({ message: 'If that email is registered, a reset link has been sent.' });
 });
 
-router.post('/reset-password', async (req, res) => {
+router.post('/reset-password', authStrictLimiter, async (req, res) => {
   const { token, password } = req.body;
   if (!token || !password) return res.status(400).json({ error: 'Token and password required' });
   if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
@@ -170,7 +174,7 @@ router.post('/reset-password', async (req, res) => {
 
   const passwordHash = await hashPassword(password);
   await db.run(
-    'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
+    'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL, session_token = NULL WHERE id = ?',
     passwordHash,
     user.id
   );

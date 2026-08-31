@@ -27,11 +27,18 @@ async function all(sql, ...params) {
   return res.rows;
 }
 
+const INSERT_TABLE_RE = /^\s*INSERT\s+INTO\s+([a-z_]+)/i;
+/** Tables with no serial `id` column — must not use RETURNING id */
+const INSERT_WITHOUT_ID = new Set(['app_cache', 'troop_members']);
+
 async function run(sql, ...params) {
   await ensureSchema();
   let q = toPg(sql);
-  const isInsert = /^\s*INSERT/i.test(sql.trim());
-  if (isInsert && !/RETURNING/i.test(q)) {
+  const trimmed = sql.trim();
+  const tableMatch = INSERT_TABLE_RE.exec(trimmed);
+  const table = tableMatch ? tableMatch[1].toLowerCase() : null;
+  const isInsert = /^\s*INSERT/i.test(trimmed);
+  if (isInsert && !/RETURNING/i.test(q) && table && !INSERT_WITHOUT_ID.has(table)) {
     q = `${q.replace(/;?\s*$/, '')} RETURNING id`;
   }
   const res = await pool.query(q, params);

@@ -15,6 +15,7 @@ if (fs.existsSync(`${testDbPath}-wal`)) fs.unlinkSync(`${testDbPath}-wal`);
 if (fs.existsSync(`${testDbPath}-shm`)) fs.unlinkSync(`${testDbPath}-shm`);
 
 const { createApp } = require('../app');
+const db = require('../db');
 const { app, server } = createApp({ withStaticClient: false, withWebSocket: false, withRealtime: false });
 
 test.after(() => {
@@ -180,4 +181,34 @@ test('report post creates pending report', async () => {
   const reports = await admin.get('/api/admin/reports');
   assert.equal(reports.status, 200);
   assert.ok(reports.body.length >= 1);
+});
+
+test('logout invalidates server session', async () => {
+  const email = `logout-${Date.now()}@example.com`;
+  const agent = request.agent(app);
+  await registerAndLogin(agent, email);
+
+  const row = await db.get('SELECT session_token FROM users WHERE email = ?', email);
+  assert.ok(row.session_token);
+
+  const logout = await agent.post('/api/auth/logout');
+  assert.equal(logout.status, 200);
+
+  const stolen = await request(app)
+    .get('/api/auth/me')
+    .set('Cookie', `user_token=${row.session_token}`);
+  assert.equal(stolen.status, 200);
+  assert.equal(stolen.body, null);
+});
+
+test('app_cache write and read works', async () => {
+  const { cacheSet, cacheGet } = require('../lib/cache');
+  await cacheSet('test-cache-key', { ok: true }, null);
+  const val = await cacheGet('test-cache-key');
+  assert.deepEqual(val, { ok: true });
+});
+
+test('monkey-of-the-day endpoint succeeds', async () => {
+  const res = await request(app).get('/api/monkey-of-the-day');
+  assert.equal(res.status, 200);
 });

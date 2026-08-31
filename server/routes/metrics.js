@@ -6,6 +6,9 @@ const router = express.Router();
 
 function metricsAuth(req, res, next) {
   const token = process.env.METRICS_TOKEN;
+  if (process.env.NODE_ENV === 'production' && !token) {
+    return res.status(503).json({ error: 'Metrics disabled' });
+  }
   if (!token) return next();
   const header = req.headers.authorization;
   if (header === `Bearer ${token}`) return next();

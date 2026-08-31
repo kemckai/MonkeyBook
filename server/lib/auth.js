@@ -82,6 +82,10 @@ async function issueSession(res, user, monkeyToken) {
   return sessionToken;
 }
 
+async function invalidateUserSession(userId) {
+  await db.run('UPDATE users SET session_token = NULL WHERE id = ?', userId);
+}
+
 async function resolveMonkey(req, res) {
   const user = await getUser(req);
   if (!user) return { status: 401, error: 'Login required' };
@@ -166,6 +170,7 @@ module.exports = {
   verifyPassword,
   createMonkeyForUser,
   issueSession,
+  invalidateUserSession,
   isAdminEmail,
   requireUser,
   requireMonkey,
