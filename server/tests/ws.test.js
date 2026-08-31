@@ -48,6 +48,15 @@ test('shouldDeliver scopes media_ready to uploader monkey', () => {
   assert.equal(shouldDeliver(other, 'media_ready', data), false);
 });
 
+test('shouldDeliver scopes troop_membership_changed to target monkey only', () => {
+  const self = mockClient({ userId: 1, monkeyId: 10 });
+  const other = mockClient({ userId: 2, monkeyId: 20 });
+
+  const data = { monkey_id: 10 };
+  assert.equal(shouldDeliver(self, 'troop_membership_changed', data), true);
+  assert.equal(shouldDeliver(other, 'troop_membership_changed', data), false);
+});
+
 test('shouldDeliver ignores unknown events', () => {
   const client = mockClient({ userId: 1, monkeyId: 10 });
   assert.equal(shouldDeliver(client, 'mystery_event', {}), false);

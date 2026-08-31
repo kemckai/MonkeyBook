@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireMonkey, getMonkey } = require('../lib/auth');
+const { broadcast } = require('../ws');
 
 const router = express.Router();
 
@@ -31,6 +32,8 @@ router.post('/', requireMonkey(async (req, res) => {
 
   await db.run('INSERT INTO troop_members (troop_id, monkey_id) VALUES (?, ?)', result.lastInsertRowid, req.monkey.id);
 
+  broadcast('troop_membership_changed', { monkey_id: req.monkey.id });
+
   const troop = await db.get('SELECT * FROM troops WHERE id = ?', result.lastInsertRowid);
   res.status(201).json({ ...troop, member_count: 1, post_count: 0 });
 }));
@@ -42,10 +45,12 @@ router.post('/:id/join', requireMonkey(async (req, res) => {
   const existing = await db.get('SELECT troop_id FROM troop_members WHERE troop_id = ? AND monkey_id = ?', troop.id, req.monkey.id);
   if (existing) {
     await db.run('DELETE FROM troop_members WHERE troop_id = ? AND monkey_id = ?', troop.id, req.monkey.id);
+    broadcast('troop_membership_changed', { monkey_id: req.monkey.id });
     return res.json({ joined: false });
   }
 
   await db.run('INSERT INTO troop_members (troop_id, monkey_id) VALUES (?, ?)', troop.id, req.monkey.id);
+  broadcast('troop_membership_changed', { monkey_id: req.monkey.id });
   res.json({ joined: true });
 }));
 

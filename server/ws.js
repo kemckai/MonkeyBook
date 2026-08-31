@@ -7,6 +7,7 @@ let heartbeatInterval = null;
 const TARGETED_EVENTS = {
   new_notification: 'monkey_id',
   media_ready: 'monkey_id',
+  troop_membership_changed: 'monkey_id',
 };
 
 const FEED_EVENTS = new Set([

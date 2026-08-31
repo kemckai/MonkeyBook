@@ -4,6 +4,7 @@ export function useWebSocket(onMessage, { enabled = true } = {}) {
   const wsRef = useRef(null);
   const reconnectTimeout = useRef(null);
   const onMessageRef = useRef(onMessage);
+  const connectRef = useRef(null);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -19,17 +20,26 @@ export function useWebSocket(onMessage, { enabled = true } = {}) {
     ws.onmessage = (evt) => {
       try {
         const { event, data } = JSON.parse(evt.data);
+        if (event === 'troop_membership_changed') {
+          if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+          ws.onclose = null;
+          ws.close();
+          connectRef.current?.();
+          return;
+        }
         onMessageRef.current(event, data);
       } catch (e) { /* ignore parse errors */ }
     };
 
     ws.onclose = (evt) => {
       if (evt.code === 4401) return;
-      reconnectTimeout.current = setTimeout(connect, 3000);
+      reconnectTimeout.current = setTimeout(() => connectRef.current?.(), 3000);
     };
 
     wsRef.current = ws;
   }, [enabled]);
+
+  connectRef.current = connect;
 
   useEffect(() => {
     if (!enabled) {
