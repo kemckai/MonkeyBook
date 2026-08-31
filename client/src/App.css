@@ -846,6 +846,50 @@ textarea:focus-visible,
 .landing-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 30px rgba(74, 158, 63, 0.55); }
 .landing-returning { margin-top: 16px; color: var(--text-muted); font-size: 14px; }
 
+.landing-share {
+  margin-top: 40px;
+  padding: 20px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.15);
+  text-align: left;
+}
+.landing-share__label {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+.landing-share__hint {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+.landing-share__url {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  color: var(--accent);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  word-break: break-all;
+}
+.landing-share__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.landing-share__error {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #e6a817;
+}
+
 /* ---- Join / Onboarding ---- */
 .join {
   min-height: 100vh;
