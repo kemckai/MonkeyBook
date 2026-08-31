@@ -88,6 +88,7 @@ function createApp({ withStaticClient = true, withWebSocket = true, withRealtime
       app.use('/icons', iconNoCache, express.static(path.join(clientDist, 'icons')));
       app.use(iconNoCache, express.static(clientDist));
       app.get('/{*splat}', (_req, res) => {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.sendFile(path.join(clientDist, 'index.html'));
       });
     } else {
