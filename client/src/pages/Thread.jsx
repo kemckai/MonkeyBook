@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import Header from '../components/Header';
 import Post from '../components/Post';
 import PostComposer from '../components/PostComposer';
@@ -14,13 +14,14 @@ export default function Thread() {
   const [parentPost, setParentPost] = useState(null);
   const [replies, setReplies] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [missing, setMissing] = useState(false);
   const [toasts, setToasts] = useState([]);
 
   function pushToast(message, type = 'info') {
-    const id = `${Date.now()}-${Math.random()}`;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    const toastId = `${Date.now()}-${Math.random()}`;
+    setToasts((prev) => [...prev, { id: toastId, message, type }]);
     setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
+      setToasts((prev) => prev.filter((t) => t.id !== toastId));
     }, 3500);
   }
 
@@ -30,13 +31,41 @@ export default function Thread() {
 
   useEffect(() => {
     if (!monkey) return;
+    let cancelled = false;
+    setLoading(true);
+    setMissing(false);
+
     Promise.all([getPost(id), getReplies(id)])
-      .then(([post, reps]) => { setParentPost(post); setReplies(reps); })
-      .catch((err) => {
-        console.error(err);
-        pushToast('Could not load this thread.', 'error');
+      .then(([post, reps]) => {
+        if (cancelled) return;
+        setParentPost(post);
+        setReplies(reps);
       })
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (cancelled) return;
+        console.error(err);
+        setParentPost(null);
+        setMissing(true);
+        pushToast('This post may have been deleted.', 'error');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    const onWs = (e) => {
+      const { event, data } = e.detail;
+      if (event === 'post_deleted' && data.id === parseInt(id, 10)) {
+        setParentPost(null);
+        setMissing(true);
+        pushToast('This post was deleted.', 'info');
+      }
+    };
+    window.addEventListener('monkeybook-ws', onWs);
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener('monkeybook-ws', onWs);
+    };
   }, [id, monkey]);
 
   async function handleReply(content, opts) {
@@ -79,7 +108,19 @@ export default function Thread() {
   }
 
   if (!parentPost) {
-    return <div className="app"><Header /><div className="empty-feed">Post not found</div></div>;
+    return (
+      <div className="app">
+        <Header />
+        <main className="feed">
+          <div className="empty-feed">
+            <p>{missing ? 'This post was deleted or could not be found.' : 'Post not found'}</p>
+            <p style={{ marginTop: 12 }}>
+              <Link to="/feed" className="btn-primary btn-sm">Back to feed</Link>
+            </p>
+          </div>
+        </main>
+      </div>
+    );
   }
 
   return (

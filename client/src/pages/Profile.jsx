@@ -31,20 +31,57 @@ export default function Profile() {
   const isMe = monkey && monkey.id === parseInt(id);
 
   useEffect(() => {
-    Promise.all([getProfile(id), getMonkeyPosts(id)])
-      .then(([prof, p]) => { setProfile(prof); setPosts(p); setBioText(prof.bio || ''); })
-      .catch((err) => {
-        console.error(err);
-        pushToast('Could not load profile.', 'error');
-      })
-      .finally(() => setLoading(false));
+    if (!monkey) return;
+    let cancelled = false;
 
-    if (monkey && monkey.id !== parseInt(id, 10)) {
+    function loadProfile() {
+      setLoading(true);
+      Promise.all([getProfile(id), getMonkeyPosts(id)])
+        .then(([prof, p]) => {
+          if (cancelled) return;
+          setProfile(prof);
+          setPosts(p);
+          setBioText(prof.bio || '');
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.error(err);
+          pushToast('Could not load profile.', 'error');
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    }
+
+    loadProfile();
+
+    if (monkey.id !== parseInt(id, 10)) {
       getFriendStatus(id).then((s) => {
+        if (cancelled) return;
         setFriendStatus(s.status);
         setFriendshipId(s.friendship_id || null);
       }).catch(() => {});
     }
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadProfile();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+
+    const onWs = (e) => {
+      const { event, data } = e.detail;
+      if (event === 'post_deleted') {
+        setPosts((prev) => prev.filter((p) => p.id !== data.id));
+        setProfile((prev) => prev ? { ...prev, post_count: Math.max(0, (prev.post_count || 0) - 1) } : prev);
+      }
+    };
+    window.addEventListener('monkeybook-ws', onWs);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('monkeybook-ws', onWs);
+    };
   }, [id, monkey]);
 
   async function handleSaveBio() {
@@ -70,6 +107,7 @@ export default function Profile() {
   async function handleDelete(postId) {
     await deletePost(postId);
     setPosts(prev => prev.filter(p => p.id !== postId));
+    setProfile(prev => prev ? { ...prev, post_count: Math.max(0, (prev.post_count || 0) - 1) } : prev);
   }
 
   async function handleFling(postId) {
@@ -153,7 +191,7 @@ export default function Profile() {
         </div>
         <h3 className="section-heading">Posts</h3>
         {posts.length === 0 ? (
-          <div className="empty-feed"><p>No public posts yet.</p></div>
+          <div className="empty-feed"><p>{isMe ? 'No posts yet. Fling something from the feed!' : 'No public posts yet.'}</p></div>
         ) : (
           posts.map(post => (
             <Post key={post.id} post={post} onReact={handleReact} onDelete={handleDelete} onFling={handleFling} />

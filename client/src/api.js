@@ -1,5 +1,14 @@
 const API = '/api';
 
+function dedupePosts(list) {
+  const seen = new Set();
+  return list.filter((post) => {
+    if (seen.has(post.id)) return false;
+    seen.add(post.id);
+    return true;
+  });
+}
+
 async function request(path, options = {}) {
   const res = await fetch(`${API}${path}`, {
     credentials: 'include',
@@ -123,3 +132,5 @@ async function waitForUploadJob(jobId, attempts = 30) {
   }
   throw new Error('Upload timed out');
 }
+
+export { dedupePosts };

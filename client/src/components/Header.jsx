@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/MonkeyContext';
 import { useTheme } from '../hooks/useTheme';
 import { getNotifications, markAllRead } from '../api';
@@ -9,6 +9,7 @@ export default function Header() {
   const { user, monkey, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
   const notifRef = useRef(null);
   const [unread, setUnread] = useState(0);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -66,6 +67,13 @@ export default function Header() {
     }
   }
 
+  function openNotification(notif) {
+    setShowNotifs(false);
+    if (notif.reference_id) {
+      navigate(`/post/${notif.reference_id}`);
+    }
+  }
+
   return (
     <header className="header">
       <Link to="/" className="header-left">
@@ -110,9 +118,14 @@ export default function Header() {
                     <p className="notif-empty">No notifications yet</p>
                   ) : (
                     notifs.map(n => (
-                      <div key={n.id} className={`notif-item ${n.read ? '' : 'unread'}`}>
+                      <button
+                        key={n.id}
+                        type="button"
+                        className={`notif-item notif-item-btn ${n.read ? '' : 'unread'}`}
+                        onClick={() => openNotification(n)}
+                      >
                         {n.message}
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>

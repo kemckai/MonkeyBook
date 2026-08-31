@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../db');
+const { isFalse } = require('../database/sql');
 const { generateAvatarSVG } = require('../avatars');
 const { getUser, getMonkey, getMonkeyForUser, requireUser, requireMonkey } = require('../lib/auth');
 const { enrichMonkey } = require('../lib/monkey');
@@ -54,7 +55,14 @@ router.get('/profile/:id', async (req, res) => {
   );
   if (!monkey) return res.status(404).json({ error: 'Monkey not found' });
 
-  const postCount = (await db.get('SELECT COUNT(*) as c FROM posts WHERE monkey_id = ?', monkey.id)).c;
+  const viewer = await getMonkey(req);
+  const isOwner = viewer && viewer.id === monkey.id;
+  const dialect = db.dialect || 'sqlite';
+  const anonClause = isOwner ? '' : `AND ${isFalse(dialect, 'p.is_anonymous')}`;
+  const postCount = (await db.get(
+    `SELECT COUNT(*) as c FROM posts WHERE monkey_id = ? ${anonClause}`,
+    monkey.id
+  )).c;
   res.json({ ...(await enrichMonkey(monkey)), post_count: postCount });
 });
 

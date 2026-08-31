@@ -35,6 +35,8 @@ export default function PostComposer({ onPost, parentId = null, troopId = null, 
       setContent('');
       setIsAnon(false);
       setImageUrl(null);
+    } catch (err) {
+      console.error(err);
     } finally {
       setSubmitting(false);
     }

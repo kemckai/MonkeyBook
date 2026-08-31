@@ -69,6 +69,16 @@ export default function Post({ post, onReact, onDelete, onFling, bananasRemainin
     }
   }
 
+  async function handleDeleteClick() {
+    const replies = post.reply_count || 0;
+    let message = 'Delete this post?';
+    if (replies > 0) {
+      message = `Delete this post and its ${replies} ${replies === 1 ? 'reply' : 'replies'}?`;
+    }
+    if (!window.confirm(message)) return;
+    await withPending('delete', () => onDelete(post.id));
+  }
+
   return (
     <article className={`post post-enter ${showBlur ? 'post-blurred' : ''}`}>
       <BlurredPost
@@ -112,7 +122,7 @@ export default function Post({ post, onReact, onDelete, onFling, bananasRemainin
             <button className="reaction-btn report-btn" onClick={() => setShowReport(!showReport)} aria-label="Report post">🚩</button>
           )}
           {post.is_mine && (
-            <button className="delete-btn" disabled={pending.delete} onClick={() => withPending('delete', () => onDelete(post.id))} aria-label="Delete post">
+            <button className="delete-btn" disabled={pending.delete} onClick={handleDeleteClick} aria-label="Delete post">
               {pending.delete ? '⏳' : '🗑️'}
             </button>
           )}

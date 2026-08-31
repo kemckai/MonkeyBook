@@ -141,6 +141,21 @@ textarea:focus-visible,
   border-bottom: 1px solid var(--border);
 }
 
+.notif-item-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  min-height: 44px;
+}
+
+.notif-item-btn:hover {
+  background: var(--bg-base);
+}
+
 .notif-item.unread {
   background: var(--bg-base);
   color: var(--text-primary);

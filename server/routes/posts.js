@@ -108,17 +108,20 @@ router.get('/', requireMonkey(async (req, res) => {
 
 router.get('/monkey/:monkeyId/posts', async (req, res) => {
   const monkey = await getMonkey(req);
-  const monkeyId = monkey ? monkey.id : null;
+  const viewerId = monkey ? monkey.id : null;
+  const profileId = parseInt(req.params.monkeyId, 10);
+  const isOwner = viewerId === profileId;
   const dialect = db.dialect || 'sqlite';
+  const anonClause = isOwner ? '' : `AND ${isFalse(dialect, 'p.is_anonymous')}`;
 
   const posts = await db.all(`
     ${postSelectSql()}
-    WHERE p.monkey_id = ? AND ${isFalse(dialect, 'p.is_anonymous')}
+    WHERE p.monkey_id = ? ${anonClause}
     ORDER BY p.created_at DESC
     LIMIT 50
-  `, req.params.monkeyId);
+  `, profileId);
 
-  const result = await Promise.all(posts.map((p) => enrichPost(p, monkeyId)));
+  const result = await Promise.all(posts.map((p) => enrichPost(p, viewerId)));
   res.json(result);
 });
 
@@ -179,7 +182,7 @@ router.post('/', requireMonkey(async (req, res) => {
       await queueNotification({
         monkeyId: parentPost.monkey_id,
         type: 'reply',
-        referenceId: result.lastInsertRowid,
+        referenceId: parent_id,
         message: `${name} replied to your post`,
       });
     }

@@ -4,7 +4,7 @@ import Post from '../components/Post';
 import PostComposer from '../components/PostComposer';
 import ToastStack from '../components/ToastStack';
 import { useMonkey } from '../context/MonkeyContext';
-import { getPosts, createPost, deletePost, toggleReaction, flingPost, getMonkeyOfTheDay } from '../api';
+import { getPosts, createPost, deletePost, toggleReaction, flingPost, getMonkeyOfTheDay, dedupePosts } from '../api';
 
 export default function Feed() {
   const { monkey } = useMonkey();
@@ -39,9 +39,9 @@ export default function Feed() {
         cursor: resetCursor ? undefined : cursor,
       });
       if (resetCursor) {
-        setPosts(data.posts);
+        setPosts(dedupePosts(data.posts));
       } else {
-        setPosts(prev => [...prev, ...data.posts]);
+        setPosts(prev => dedupePosts([...prev, ...data.posts]));
       }
       setCursor(data.next_cursor);
     } catch (e) {
@@ -84,7 +84,7 @@ export default function Feed() {
     }
 
     if (event === 'new_post' && !data.parent_id) {
-      setPosts(prev => prev.some(p => p.id === data.id) ? prev : [data, ...prev]);
+      setPosts(prev => dedupePosts([data, ...prev]));
     } else if (event === 'new_reply') {
       setPosts(prev => prev.map(p => p.id === data.parent_id ? { ...p, reply_count: (p.reply_count || 0) + 1 } : p));
     } else if (event === 'post_deleted') {
@@ -108,7 +108,7 @@ export default function Feed() {
   async function handlePost(content, opts) {
     try {
       const newPost = await createPost(content, opts);
-      setPosts(prev => [newPost, ...prev]);
+      setPosts(prev => dedupePosts([newPost, ...prev]));
     } catch (err) {
       pushToast(err.message || 'Unable to post right now.', 'error');
     }
