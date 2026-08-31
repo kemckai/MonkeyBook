@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const fs = require('fs');
 const request = require('supertest');
+const WebSocket = require('ws');
 
 const testDbPath = path.join(__dirname, 'test-monkeybook.db');
 process.env.MONKEYBOOK_DB_PATH = testDbPath;
@@ -256,4 +257,47 @@ test('reapStuckJobs requeues expired processing jobs', async () => {
   assert.ok(reaped >= 1);
   const job = await db.get('SELECT status FROM jobs WHERE id = ?', row.lastInsertRowid);
   assert.equal(job.status, 'pending');
+});
+
+test('websocket rejects unauthenticated connections', async () => {
+  const { server: wsServer } = createApp({ withStaticClient: false, withWebSocket: true, withRealtime: false });
+  await new Promise((resolve) => wsServer.listen(0, '127.0.0.1', resolve));
+  const { port } = wsServer.address();
+
+  let opened = false;
+  await new Promise((resolve) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`);
+    ws.on('open', () => { opened = true; ws.close(); resolve(); });
+    ws.on('error', () => resolve());
+    ws.on('close', () => resolve());
+    setTimeout(resolve, 2000);
+  });
+
+  assert.equal(opened, false);
+  await new Promise((resolve) => wsServer.close(resolve));
+});
+
+test('websocket accepts authenticated connections', async () => {
+  const email = `ws-auth-${Date.now()}@example.com`;
+  const agent = request.agent(app);
+  await registerAndLogin(agent, email);
+  const row = await db.get('SELECT session_token FROM users WHERE email = ?', email);
+
+  const { server: wsServer } = createApp({ withStaticClient: false, withWebSocket: true, withRealtime: false });
+  await new Promise((resolve) => wsServer.listen(0, '127.0.0.1', resolve));
+  const { port } = wsServer.address();
+
+  await new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/ws`, {
+      headers: { Cookie: `user_token=${row.session_token}` },
+    });
+    ws.on('open', () => {
+      ws.close();
+      resolve();
+    });
+    ws.on('error', reject);
+    setTimeout(() => reject(new Error('timeout waiting for ws open')), 5000);
+  });
+
+  await new Promise((resolve) => wsServer.close(resolve));
 });

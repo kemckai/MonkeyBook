@@ -31,7 +31,7 @@ router.post('/:postId/:type', requireMonkey(async (req, res) => {
   const { postId, type } = req.params;
   if (!['banana', 'poop'].includes(type)) return res.status(400).json({ error: 'Invalid reaction type' });
 
-  const post = await db.get('SELECT id, monkey_id FROM posts WHERE id = ?', postId);
+  const post = await db.get('SELECT id, monkey_id, troop_id FROM posts WHERE id = ?', postId);
   if (!post) return res.status(404).json({ error: 'Post not found' });
 
   const existing = await db.get('SELECT id FROM reactions WHERE post_id = ? AND monkey_id = ? AND type = ?', postId, req.monkey.id, type);
@@ -74,7 +74,7 @@ router.post('/:postId/:type', requireMonkey(async (req, res) => {
   const updatedMonkey = await db.get('SELECT bananas_given_today FROM monkeys WHERE id = ?', req.monkey.id);
   const bananasRemaining = DAILY_BANANA_LIMIT - (updatedMonkey.bananas_given_today || 0);
   const response = { ...counts, bananas_remaining: bananasRemaining };
-  broadcast('new_reaction', { post_id: Number(postId), ...response });
+  broadcast('new_reaction', { post_id: Number(postId), troop_id: post.troop_id, ...response });
   res.json(response);
 }));
 

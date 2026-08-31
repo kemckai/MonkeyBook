@@ -49,8 +49,9 @@ router.post('/reports/:id/resolve', requireAdmin(async (req, res) => {
   const report = await db.get('SELECT * FROM reports WHERE id = ?', req.params.id);
   if (!report) return res.status(404).json({ error: 'Report not found' });
 
+  const post = await db.get('SELECT troop_id FROM posts WHERE id = ?', report.post_id);
   await db.run('DELETE FROM posts WHERE id = ?', report.post_id);
-  broadcast('post_deleted', { id: report.post_id });
+  broadcast('post_deleted', { id: report.post_id, troop_id: post?.troop_id ?? null });
 
   await db.run(
     'UPDATE reports SET status = ?, resolved_at = CURRENT_TIMESTAMP, resolved_by = ? WHERE post_id = ? AND status = ?',
@@ -60,11 +61,11 @@ router.post('/reports/:id/resolve', requireAdmin(async (req, res) => {
 }));
 
 router.delete('/posts/:id', requireAdmin(async (req, res) => {
-  const post = await db.get('SELECT id FROM posts WHERE id = ?', req.params.id);
+  const post = await db.get('SELECT id, troop_id FROM posts WHERE id = ?', req.params.id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
 
   await db.run('DELETE FROM posts WHERE id = ?', req.params.id);
-  broadcast('post_deleted', { id: Number(req.params.id) });
+  broadcast('post_deleted', { id: Number(req.params.id), troop_id: post.troop_id });
   res.json({ deleted: true });
 }));
 

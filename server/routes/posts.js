@@ -198,18 +198,22 @@ router.post('/', requireMonkey(async (req, res) => {
   `, result.lastInsertRowid);
 
   const enrichedPost = await enrichPost({ ...post, bananas: 0, poops: 0, reply_count: 0, fling_count: 0 }, req.monkey.id);
+  if (!enrichedPost.troop_id && parent_id) {
+    const parentRow = await db.get('SELECT troop_id FROM posts WHERE id = ?', parent_id);
+    if (parentRow?.troop_id) enrichedPost.troop_id = parentRow.troop_id;
+  }
   broadcast(parent_id ? 'new_reply' : 'new_post', enrichedPost);
   res.status(201).json(enrichedPost);
 }));
 
 router.post('/:id/fling', requireMonkey(async (req, res) => {
-  const post = await db.get('SELECT id, monkey_id FROM posts WHERE id = ?', req.params.id);
+  const post = await db.get('SELECT id, monkey_id, troop_id FROM posts WHERE id = ?', req.params.id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
 
   const existing = await db.get('SELECT id FROM flings WHERE monkey_id = ? AND original_post_id = ?', req.monkey.id, post.id);
   if (existing) {
     await db.run('DELETE FROM flings WHERE id = ?', existing.id);
-    broadcast('post_flung', { post_id: post.id, flung: false });
+    broadcast('post_flung', { post_id: post.id, flung: false, troop_id: post.troop_id });
     return res.json({ flung: false });
   }
 
@@ -224,17 +228,17 @@ router.post('/:id/fling', requireMonkey(async (req, res) => {
     });
   }
 
-  broadcast('post_flung', { post_id: post.id, flung: true });
+  broadcast('post_flung', { post_id: post.id, flung: true, troop_id: post.troop_id });
   res.json({ flung: true });
 }));
 
 router.delete('/:id', requireMonkey(async (req, res) => {
-  const post = await db.get('SELECT monkey_id FROM posts WHERE id = ?', req.params.id);
+  const post = await db.get('SELECT monkey_id, troop_id FROM posts WHERE id = ?', req.params.id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
   if (post.monkey_id !== req.monkey.id) return res.status(403).json({ error: 'Not your post' });
 
   await db.run('DELETE FROM posts WHERE id = ?', req.params.id);
-  broadcast('post_deleted', { id: Number(req.params.id) });
+  broadcast('post_deleted', { id: Number(req.params.id), troop_id: post.troop_id });
   res.json({ deleted: true });
 }));
 
