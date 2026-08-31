@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { init: initWS, broadcast } = require('./ws');
+const { startListener } = require('./lib/events');
 const authRoutes = require('./routes/auth');
 const identityRoutes = require('./routes/identity');
 const postRoutes = require('./routes/posts');
@@ -16,10 +17,12 @@ const motdRoutes = require('./routes/motd');
 const friendRoutes = require('./routes/friends');
 const reportRoutes = require('./routes/reports');
 const adminRoutes = require('./routes/admin');
-const { upload, useR2, uploadToR2, localUrl, uploadsDir } = require('./lib/storage');
-const { requireMonkeyMiddleware } = require('./lib/auth');
+const uploadRoutes = require('./routes/uploads');
+const metricsRoutes = require('./routes/metrics');
+const { inflightMiddleware } = require('./lib/metrics');
+const { uploadsDir } = require('./lib/storage');
 
-function createApp({ withStaticClient = true, withWebSocket = true } = {}) {
+function createApp({ withStaticClient = true, withWebSocket = true, withRealtime = true } = {}) {
   const app = express();
   const server = http.createServer(app);
 
@@ -31,28 +34,26 @@ function createApp({ withStaticClient = true, withWebSocket = true } = {}) {
     initWS(server);
   }
 
+  if (withRealtime && withWebSocket) {
+    startListener((event, data) => broadcast(event, data)).catch((err) => {
+      console.error('Failed to start realtime listener:', err);
+    });
+  }
+
   const corsOrigin =
     process.env.NODE_ENV === 'production'
       ? process.env.CLIENT_ORIGIN || true
       : true;
   app.use(cors({ origin: corsOrigin, credentials: true }));
+  app.use(inflightMiddleware);
   app.use(express.json());
   app.use(cookieParser());
 
   app.use('/uploads', express.static(uploadsDir));
   app.use('/api/uploads', express.static(uploadsDir));
 
-  app.post('/api/upload', requireMonkeyMiddleware, upload.single('image'), async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No valid image' });
-    try {
-      const url = useR2() ? await uploadToR2(req.file) : localUrl(req.file.filename);
-      res.json({ url });
-    } catch (err) {
-      console.error('Upload failed:', err);
-      res.status(500).json({ error: 'Upload failed' });
-    }
-  });
-
+  app.use('/api/metrics', metricsRoutes);
+  app.use('/api/upload', uploadRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/identity', identityRoutes);
   app.use('/api/posts', postRoutes);

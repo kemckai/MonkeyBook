@@ -3,6 +3,7 @@ const db = require('../db');
 const { maxExpr } = require('../database/sql');
 const { getDisplayName } = require('../titles');
 const { requireMonkey } = require('../lib/auth');
+const { queueNotification } = require('../lib/notifications');
 const { broadcast } = require('../ws');
 
 const router = express.Router();
@@ -52,11 +53,12 @@ router.post('/:postId/:type', requireMonkey(async (req, res) => {
 
     if (post.monkey_id !== req.monkey.id) {
       const emoji = type === 'banana' ? '🍌' : '💩';
-      await db.run(
-        'INSERT INTO notifications (monkey_id, type, reference_id, message) VALUES (?, ?, ?, ?)',
-        post.monkey_id, 'reaction', parseInt(postId, 10), `${await getDisplayName(req.monkey)} sent ${emoji} on your post`
-      );
-      broadcast('new_notification', { monkey_id: post.monkey_id });
+      await queueNotification({
+        monkeyId: post.monkey_id,
+        type: 'reaction',
+        referenceId: parseInt(postId, 10),
+        message: `${await getDisplayName(req.monkey)} sent ${emoji} on your post`,
+      });
     }
   }
 

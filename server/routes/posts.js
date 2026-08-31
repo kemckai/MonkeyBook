@@ -4,6 +4,7 @@ const { getDisplayName } = require('../titles');
 const { nowMinus1Day, isFalse, toInt } = require('../database/sql');
 const { postSelectSql, trendingScoreSql } = require('../lib/postQueries');
 const { requireMonkey, getMonkey } = require('../lib/auth');
+const { queueNotification } = require('../lib/notifications');
 const { broadcast } = require('../ws');
 
 const router = express.Router();
@@ -175,11 +176,12 @@ router.post('/', requireMonkey(async (req, res) => {
     const parentPost = await db.get('SELECT monkey_id FROM posts WHERE id = ?', parent_id);
     if (parentPost && parentPost.monkey_id !== req.monkey.id) {
       const name = is_anonymous ? 'A mysterious monkey' : await getDisplayName(req.monkey);
-      await db.run(
-        'INSERT INTO notifications (monkey_id, type, reference_id, message) VALUES (?, ?, ?, ?)',
-        parentPost.monkey_id, 'reply', result.lastInsertRowid, `${name} replied to your post`
-      );
-      broadcast('new_notification', { monkey_id: parentPost.monkey_id });
+      await queueNotification({
+        monkeyId: parentPost.monkey_id,
+        type: 'reply',
+        referenceId: result.lastInsertRowid,
+        message: `${name} replied to your post`,
+      });
     }
   }
 
@@ -207,11 +209,12 @@ router.post('/:id/fling', requireMonkey(async (req, res) => {
   await db.run('INSERT INTO flings (monkey_id, original_post_id) VALUES (?, ?)', req.monkey.id, post.id);
 
   if (post.monkey_id !== req.monkey.id) {
-    await db.run(
-      'INSERT INTO notifications (monkey_id, type, reference_id, message) VALUES (?, ?, ?, ?)',
-      post.monkey_id, 'fling', post.id, `${await getDisplayName(req.monkey)} flung your post`
-    );
-    broadcast('new_notification', { monkey_id: post.monkey_id });
+    await queueNotification({
+      monkeyId: post.monkey_id,
+      type: 'fling',
+      referenceId: post.id,
+      message: `${await getDisplayName(req.monkey)} flung your post`,
+    });
   }
 
   broadcast('post_flung', { post_id: post.id, flung: true });

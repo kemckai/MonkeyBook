@@ -38,24 +38,30 @@ function getS3Client() {
   });
 }
 
-async function uploadToR2(file) {
-  const ext = path.extname(file.originalname);
+async function uploadBufferToR2(buffer, mimeType, sourcePath) {
+  const ext = path.extname(sourcePath) || '.bin';
   const key = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
   const client = getS3Client();
-  const body = fs.readFileSync(file.path);
   await client.send(new PutObjectCommand({
     Bucket: process.env.R2_BUCKET,
     Key: key,
-    Body: body,
-    ContentType: file.mimetype,
+    Body: buffer,
+    ContentType: mimeType,
   }));
-  fs.unlinkSync(file.path);
   const publicBase = process.env.R2_PUBLIC_URL || `https://${process.env.R2_BUCKET}.${process.env.R2_ACCOUNT_ID}.r2.dev`;
   return `${publicBase.replace(/\/$/, '')}/${key}`;
+}
+
+/** @deprecated Prefer enqueueing media.upload jobs; kept for sync local dev paths */
+async function uploadToR2(file) {
+  const body = await fs.promises.readFile(file.path);
+  const url = await uploadBufferToR2(body, file.mimetype, file.path);
+  await fs.promises.unlink(file.path).catch(() => {});
+  return url;
 }
 
 function localUrl(filename) {
   return `/api/uploads/${filename}`;
 }
 
-module.exports = { upload, useR2, uploadToR2, localUrl, uploadsDir };
+module.exports = { upload, useR2, uploadToR2, uploadBufferToR2, localUrl, uploadsDir };

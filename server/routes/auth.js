@@ -17,7 +17,7 @@ const {
 } = require('../lib/auth');
 const { enrichMonkey } = require('../lib/monkey');
 const { generateMonkeyIdentity } = require('../monkeys');
-const { sendPasswordResetEmail } = require('../lib/email');
+const { enqueue, JOB_TYPES } = require('../lib/queue');
 const crypto = require('crypto');
 
 const router = express.Router();
@@ -150,12 +150,8 @@ router.post('/forgot-password', async (req, res) => {
       expires,
       user.id
     );
-    const result = await sendPasswordResetEmail(user.email, token);
-    const payload = { message: 'If that email is registered, a reset link has been sent.' };
-    if (result.devUrl && process.env.NODE_ENV !== 'production') {
-      payload.dev_reset_url = result.devUrl;
-    }
-    return res.json(payload);
+    await enqueue(JOB_TYPES.EMAIL_PASSWORD_RESET, { email: user.email, token });
+    return res.json({ message: 'If that email is registered, a reset link has been sent.' });
   }
 
   res.json({ message: 'If that email is registered, a reset link has been sent.' });

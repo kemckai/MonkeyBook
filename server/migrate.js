@@ -94,6 +94,51 @@ function migrate(db) {
   const usersCols = tables.includes('users') ? tableCols('users') : [];
   if (usersCols.length && !usersCols.includes('reset_token')) addCol('users', 'reset_token TEXT');
   if (usersCols.length && !usersCols.includes('reset_token_expires')) addCol('users', 'reset_token_expires DATETIME');
+
+  if (!tables.includes('jobs')) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS jobs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        payload TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+        attempts INTEGER DEFAULT 0,
+        max_attempts INTEGER DEFAULT 3,
+        run_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        last_error TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        completed_at DATETIME
+      );
+      CREATE INDEX IF NOT EXISTS idx_jobs_pending ON jobs(status, run_at);
+    `);
+  }
+
+  if (!tables.includes('media_jobs')) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS media_jobs (
+        id TEXT PRIMARY KEY,
+        monkey_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+        temp_path TEXT,
+        public_url TEXT,
+        mime_type TEXT,
+        last_error TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        completed_at DATETIME,
+        FOREIGN KEY (monkey_id) REFERENCES monkeys(id)
+      );
+    `);
+  }
+
+  if (!tables.includes('app_cache')) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS app_cache (
+        cache_key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        expires_at DATETIME
+      );
+    `);
+  }
 }
 
 module.exports = { migrate };

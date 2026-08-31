@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { requireMonkey } = require('../lib/auth');
-const { broadcast } = require('../ws');
+const { queueNotification } = require('../lib/notifications');
 
 const router = express.Router();
 
@@ -100,12 +100,12 @@ router.post('/request/:monkeyId', requireMonkey(async (req, res) => {
     req.monkey.id, addresseeId, 'pending'
   );
 
-  await db.run(
-    'INSERT INTO notifications (monkey_id, type, reference_id, message) VALUES (?, ?, ?, ?)',
-    addresseeId, 'friend_request', result.lastInsertRowid,
-    `${req.monkey.monkey_emoji} ${req.monkey.monkey_name} sent you a friend request`
-  );
-  broadcast('new_notification', { monkey_id: addresseeId });
+  await queueNotification({
+    monkeyId: addresseeId,
+    type: 'friend_request',
+    referenceId: result.lastInsertRowid,
+    message: `${req.monkey.monkey_emoji} ${req.monkey.monkey_name} sent you a friend request`,
+  });
 
   res.status(201).json({ friendship_id: result.lastInsertRowid, status: 'pending' });
 }));
@@ -119,12 +119,12 @@ router.post('/accept/:id', requireMonkey(async (req, res) => {
   await db.run('UPDATE friendships SET status = ? WHERE id = ?', 'accepted', friendship.id);
 
   const requester = await db.get('SELECT monkey_name, monkey_emoji FROM monkeys WHERE id = ?', friendship.requester_id);
-  await db.run(
-    'INSERT INTO notifications (monkey_id, type, reference_id, message) VALUES (?, ?, ?, ?)',
-    friendship.requester_id, 'friend_accept', friendship.id,
-    `${req.monkey.monkey_emoji} ${req.monkey.monkey_name} accepted your friend request`
-  );
-  broadcast('new_notification', { monkey_id: friendship.requester_id });
+  await queueNotification({
+    monkeyId: friendship.requester_id,
+    type: 'friend_accept',
+    referenceId: friendship.id,
+    message: `${req.monkey.monkey_emoji} ${req.monkey.monkey_name} accepted your friend request`,
+  });
 
   res.json({ status: 'accepted' });
 }));

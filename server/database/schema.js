@@ -125,6 +125,40 @@ const SQLITE_SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_notifications_monkey ON notifications(monkey_id, read);
   CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id, status);
   CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+
+  CREATE TABLE IF NOT EXISTS jobs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+    attempts INTEGER DEFAULT 0,
+    max_attempts INTEGER DEFAULT 3,
+    run_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_error TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME
+  );
+
+  CREATE TABLE IF NOT EXISTS media_jobs (
+    id TEXT PRIMARY KEY,
+    monkey_id INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+    temp_path TEXT,
+    public_url TEXT,
+    mime_type TEXT,
+    last_error TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME,
+    FOREIGN KEY (monkey_id) REFERENCES monkeys(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS app_cache (
+    cache_key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    expires_at DATETIME
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_jobs_pending ON jobs(status, run_at);
 `;
 
 const POSTGRES_SCHEMA = `
@@ -238,6 +272,39 @@ const POSTGRES_SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_friendships_addressee ON friendships(addressee_id, status);
   CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
   CREATE INDEX IF NOT EXISTS idx_monkeys_user ON monkeys(user_id);
+
+  CREATE TABLE IF NOT EXISTS jobs (
+    id SERIAL PRIMARY KEY,
+    type TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+    attempts INTEGER DEFAULT 0,
+    max_attempts INTEGER DEFAULT 3,
+    run_at TIMESTAMPTZ DEFAULT NOW(),
+    last_error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+  );
+
+  CREATE TABLE IF NOT EXISTS media_jobs (
+    id TEXT PRIMARY KEY,
+    monkey_id INTEGER NOT NULL REFERENCES monkeys(id),
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+    temp_path TEXT,
+    public_url TEXT,
+    mime_type TEXT,
+    last_error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    completed_at TIMESTAMPTZ
+  );
+
+  CREATE TABLE IF NOT EXISTS app_cache (
+    cache_key TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    expires_at TIMESTAMPTZ
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_jobs_pending ON jobs(status, run_at);
 `;
 
 module.exports = { SQLITE_SCHEMA, POSTGRES_SCHEMA };

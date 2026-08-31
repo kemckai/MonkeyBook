@@ -1,17 +1,18 @@
 const express = require('express');
 const db = require('../db');
 const { getDisplayName } = require('../titles');
+const { cacheGet, cacheSet } = require('../lib/cache');
+const { toInt } = require('../database/sql');
 
 const router = express.Router();
 
-let cachedMotd = null;
-let cachedDate = null;
-
 router.get('/', async (_req, res) => {
   const today = new Date().toISOString().split('T')[0];
+  const cacheKey = `motd:${today}`;
 
-  if (cachedDate === today && cachedMotd) {
-    return res.json(cachedMotd);
+  const cached = await cacheGet(cacheKey);
+  if (cached !== null) {
+    return res.json(cached);
   }
 
   const result = await db.get(`
@@ -27,19 +28,19 @@ router.get('/', async (_req, res) => {
   `, today);
 
   if (!result) {
-    cachedMotd = null;
-    cachedDate = today;
+    await cacheSet(cacheKey, null, `${today}T23:59:59.999Z`);
     return res.json(null);
   }
 
-  cachedMotd = {
+  const motd = {
     ...result,
+    poop_count: toInt(result.poop_count),
     display_name: await getDisplayName(result),
-    reason: `Received ${result.poop_count} poop${result.poop_count > 1 ? 's' : ''} today`,
+    reason: `Received ${toInt(result.poop_count)} poop${toInt(result.poop_count) > 1 ? 's' : ''} today`,
   };
-  cachedDate = today;
 
-  res.json(cachedMotd);
+  await cacheSet(cacheKey, motd, `${today}T23:59:59.999Z`);
+  res.json(motd);
 });
 
 module.exports = router;

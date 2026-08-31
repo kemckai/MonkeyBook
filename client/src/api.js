@@ -103,5 +103,23 @@ export async function uploadImage(file) {
   form.append('image', file);
   const res = await fetch(`${API}/upload`, { method: 'POST', credentials: 'include', body: form });
   if (!res.ok) throw new Error('Upload failed');
-  return res.json();
+  const data = await res.json();
+  if (data.status === 'processing' && data.job_id) {
+    return waitForUploadJob(data.job_id);
+  }
+  return data;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForUploadJob(jobId, attempts = 30) {
+  for (let i = 0; i < attempts; i += 1) {
+    const status = await request(`/upload/${jobId}`);
+    if (status.status === 'completed' && status.url) return { url: status.url };
+    if (status.status === 'failed') throw new Error(status.error || 'Upload failed');
+    await sleep(1000);
+  }
+  throw new Error('Upload timed out');
 }

@@ -7,13 +7,15 @@ const request = require('supertest');
 const testDbPath = path.join(__dirname, 'test-monkeybook.db');
 process.env.MONKEYBOOK_DB_PATH = testDbPath;
 delete process.env.DATABASE_URL;
+process.env.SYNC_JOBS = '1';
+process.env.EMBEDDED_WORKER = 'false';
 
 if (fs.existsSync(testDbPath)) fs.unlinkSync(testDbPath);
 if (fs.existsSync(`${testDbPath}-wal`)) fs.unlinkSync(`${testDbPath}-wal`);
 if (fs.existsSync(`${testDbPath}-shm`)) fs.unlinkSync(`${testDbPath}-shm`);
 
 const { createApp } = require('../app');
-const { app, server } = createApp({ withStaticClient: false, withWebSocket: false });
+const { app, server } = createApp({ withStaticClient: false, withWebSocket: false, withRealtime: false });
 
 test.after(() => {
   server.close();
@@ -59,6 +61,17 @@ test('upload requires monkey auth', async () => {
     .post('/api/upload')
     .attach('image', Buffer.from('fake'), { filename: 'test.png', contentType: 'image/png' });
   assert.equal(blocked.status, 401);
+});
+
+test('metrics endpoints expose load and queue stats', async () => {
+  const load = await request(app).get('/api/metrics/load');
+  assert.equal(load.status, 200);
+  assert.equal(typeof load.body.inflight, 'number');
+
+  const queue = await request(app).get('/api/metrics/queue');
+  assert.equal(queue.status, 200);
+  assert.equal(typeof queue.body.pending, 'number');
+  assert.equal(typeof queue.body.backlog, 'number');
 });
 
 test('troop posting requires membership', async () => {
