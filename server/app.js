@@ -76,7 +76,14 @@ function createApp({ withStaticClient = true, withWebSocket = true, withRealtime
   if (withStaticClient) {
     const clientDist = path.join(__dirname, '..', 'client', 'dist');
     if (fs.existsSync(clientDist)) {
-      app.use(express.static(clientDist));
+      const iconNoCache = (req, res, next) => {
+        if (/\.(ico|png)$/i.test(req.path)) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        }
+        next();
+      };
+      app.use('/icons', iconNoCache, express.static(path.join(clientDist, 'icons')));
+      app.use(iconNoCache, express.static(clientDist));
       app.get('/{*splat}', (_req, res) => {
         res.sendFile(path.join(clientDist, 'index.html'));
       });
