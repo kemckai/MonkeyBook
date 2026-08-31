@@ -21,7 +21,7 @@ router.get('/', async (_req, res) => {
     JOIN posts p ON p.monkey_id = m.id
     JOIN reactions r ON r.post_id = p.id AND r.type = 'poop'
     WHERE DATE(r.created_at) = ?
-    GROUP BY m.id
+    GROUP BY m.id, m.monkey_name, m.monkey_emoji, m.avatar_seed, m.created_at
     ORDER BY poop_count DESC
     LIMIT 1
   `, today);

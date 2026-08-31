@@ -4,7 +4,7 @@ function toPg(sql) {
 }
 
 function dateOnly(dialect, column) {
-  return dialect === 'postgres' ? `DATE(${column})` : `DATE(${column})`;
+  return `DATE(${column})`;
 }
 
 function nowMinus1Day(dialect) {
@@ -15,4 +15,12 @@ function maxExpr(dialect, a, b) {
   return dialect === 'postgres' ? `GREATEST(${a}, ${b})` : `MAX(${a}, ${b})`;
 }
 
-module.exports = { toPg, dateOnly, nowMinus1Day, maxExpr };
+function isFalse(dialect, column) {
+  return dialect === 'postgres' ? `(${column} IS NOT TRUE)` : `(${column} = 0)`;
+}
+
+function toInt(val) {
+  return typeof val === 'string' ? parseInt(val, 10) : Number(val) || 0;
+}
+
+module.exports = { toPg, dateOnly, nowMinus1Day, maxExpr, isFalse, toInt };

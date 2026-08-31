@@ -21,8 +21,9 @@ function setMonkeyCookie(res, token) {
 }
 
 function clearAuthCookies(res) {
-  res.clearCookie(USER_COOKIE, { httpOnly: true, sameSite: 'lax' });
-  res.clearCookie(MONKEY_COOKIE, { httpOnly: true, sameSite: 'lax' });
+  const opts = { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' };
+  res.clearCookie(USER_COOKIE, opts);
+  res.clearCookie(MONKEY_COOKIE, opts);
 }
 
 async function getUser(req) {
@@ -99,7 +100,11 @@ function requireMonkey(handler) {
     try {
       const user = await getUser(req);
       if (!user) return res.status(401).json({ error: 'Login required' });
-      const monkey = await getMonkey(req);
+      let monkey = await getMonkey(req);
+      if (!monkey) {
+        monkey = await getMonkeyForUser(user.id);
+        if (monkey) setMonkeyCookie(res, monkey.session_token);
+      }
       if (!monkey) return res.status(401).json({ error: 'No monkey identity' });
       if (monkey.user_id && monkey.user_id !== user.id) {
         return res.status(403).json({ error: 'Session mismatch' });

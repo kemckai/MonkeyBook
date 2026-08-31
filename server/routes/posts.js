@@ -1,7 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const { getDisplayName } = require('../titles');
-const { nowMinus1Day } = require('../database/sql');
+const { nowMinus1Day, isFalse } = require('../database/sql');
+const { postSelectSql, trendingScoreSql } = require('../lib/postQueries');
 const { requireMonkey, getMonkey } = require('../lib/auth');
 const { broadcast } = require('../ws');
 
@@ -15,11 +16,6 @@ async function updateStreak(monkey) {
   const newStreak = monkey.streak_last_date === yesterday ? monkey.streak_count + 1 : 1;
   await db.run('UPDATE monkeys SET streak_count = ?, streak_last_date = ? WHERE id = ?', newStreak, today, monkey.id);
 }
-
-const FLING_ATTRIBUTION_SQL = `
-  (SELECT m2.monkey_name FROM flings f JOIN monkeys m2 ON f.monkey_id = m2.id WHERE f.original_post_id = p.id ORDER BY f.created_at DESC LIMIT 1) AS last_fling_name,
-  (SELECT m2.monkey_emoji FROM flings f JOIN monkeys m2 ON f.monkey_id = m2.id WHERE f.original_post_id = p.id ORDER BY f.created_at DESC LIMIT 1) AS last_fling_emoji
-`;
 
 async function enrichPost(post, currentMonkeyId) {
   const displayName = post.is_anonymous
@@ -57,6 +53,7 @@ router.get('/', requireMonkey(async (req, res) => {
   const limit = Math.min(parseInt(rawLimit, 10) || 20, 50);
   const dialect = db.dialect || 'sqlite';
   const dayFilter = nowMinus1Day(dialect);
+  const baseSelect = postSelectSql(sort === 'trending' ? dayFilter : null);
 
   let query;
   let params = [];
@@ -64,15 +61,7 @@ router.get('/', requireMonkey(async (req, res) => {
   if (feed === 'friends') {
     const cursorClause = cursor ? 'AND p.id < ?' : '';
     query = `
-      SELECT p.*, m.monkey_name, m.monkey_emoji, m.avatar_seed, m.created_at as monkey_created_at,
-        COALESCE(SUM(CASE WHEN r.type = 'banana' THEN 1 ELSE 0 END), 0) AS bananas,
-        COALESCE(SUM(CASE WHEN r.type = 'poop' THEN 1 ELSE 0 END), 0) AS poops,
-        (SELECT COUNT(*) FROM posts c WHERE c.parent_id = p.id) AS reply_count,
-        (SELECT COUNT(*) FROM flings f WHERE f.original_post_id = p.id) AS fling_count,
-        ${FLING_ATTRIBUTION_SQL}
-      FROM posts p
-      JOIN monkeys m ON p.monkey_id = m.id
-      LEFT JOIN reactions r ON r.post_id = p.id
+      ${baseSelect}
       WHERE p.parent_id IS NULL AND p.troop_id IS NULL
         AND p.monkey_id IN (
           SELECT CASE WHEN f.requester_id = ? THEN f.addressee_id ELSE f.requester_id END
@@ -80,7 +69,6 @@ router.get('/', requireMonkey(async (req, res) => {
           WHERE (f.requester_id = ? OR f.addressee_id = ?) AND f.status = 'accepted'
         )
       ${cursorClause}
-      GROUP BY p.id
       ORDER BY p.created_at DESC
       LIMIT ?
     `;
@@ -88,19 +76,10 @@ router.get('/', requireMonkey(async (req, res) => {
     else params.push(monkeyId, monkeyId, monkeyId, limit);
   } else if (sort === 'trending') {
     query = `
-      SELECT p.*, m.monkey_name, m.monkey_emoji, m.avatar_seed, m.created_at as monkey_created_at,
-        COALESCE(SUM(CASE WHEN r.type = 'banana' THEN 1 ELSE 0 END), 0) AS bananas,
-        COALESCE(SUM(CASE WHEN r.type = 'poop' THEN 1 ELSE 0 END), 0) AS poops,
-        (SELECT COUNT(*) FROM posts c WHERE c.parent_id = p.id) AS reply_count,
-        (SELECT COUNT(*) FROM flings f WHERE f.original_post_id = p.id) AS fling_count,
-        ${FLING_ATTRIBUTION_SQL}
-      FROM posts p
-      JOIN monkeys m ON p.monkey_id = m.id
-      LEFT JOIN reactions r ON r.post_id = p.id AND r.created_at > ${dayFilter}
+      ${baseSelect}
       WHERE p.parent_id IS NULL
       ${troop_id ? 'AND p.troop_id = ?' : 'AND p.troop_id IS NULL'}
-      GROUP BY p.id
-      ORDER BY (bananas + poops) DESC, p.created_at DESC
+      ORDER BY ${trendingScoreSql(dayFilter)} DESC, p.created_at DESC
       LIMIT ?
     `;
     if (troop_id) params.push(troop_id);
@@ -108,19 +87,10 @@ router.get('/', requireMonkey(async (req, res) => {
   } else {
     const cursorClause = cursor ? 'AND p.id < ?' : '';
     query = `
-      SELECT p.*, m.monkey_name, m.monkey_emoji, m.avatar_seed, m.created_at as monkey_created_at,
-        COALESCE(SUM(CASE WHEN r.type = 'banana' THEN 1 ELSE 0 END), 0) AS bananas,
-        COALESCE(SUM(CASE WHEN r.type = 'poop' THEN 1 ELSE 0 END), 0) AS poops,
-        (SELECT COUNT(*) FROM posts c WHERE c.parent_id = p.id) AS reply_count,
-        (SELECT COUNT(*) FROM flings f WHERE f.original_post_id = p.id) AS fling_count,
-        ${FLING_ATTRIBUTION_SQL}
-      FROM posts p
-      JOIN monkeys m ON p.monkey_id = m.id
-      LEFT JOIN reactions r ON r.post_id = p.id
+      ${baseSelect}
       WHERE p.parent_id IS NULL
       ${troop_id ? 'AND p.troop_id = ?' : 'AND p.troop_id IS NULL'}
       ${cursorClause}
-      GROUP BY p.id
       ORDER BY p.created_at DESC
       LIMIT ?
     `;
@@ -138,19 +108,11 @@ router.get('/', requireMonkey(async (req, res) => {
 router.get('/monkey/:monkeyId/posts', async (req, res) => {
   const monkey = await getMonkey(req);
   const monkeyId = monkey ? monkey.id : null;
+  const dialect = db.dialect || 'sqlite';
 
   const posts = await db.all(`
-    SELECT p.*, m.monkey_name, m.monkey_emoji, m.avatar_seed, m.created_at as monkey_created_at,
-      COALESCE(SUM(CASE WHEN r.type = 'banana' THEN 1 ELSE 0 END), 0) AS bananas,
-      COALESCE(SUM(CASE WHEN r.type = 'poop' THEN 1 ELSE 0 END), 0) AS poops,
-      (SELECT COUNT(*) FROM posts c WHERE c.parent_id = p.id) AS reply_count,
-      (SELECT COUNT(*) FROM flings f WHERE f.original_post_id = p.id) AS fling_count,
-      ${FLING_ATTRIBUTION_SQL}
-    FROM posts p
-    JOIN monkeys m ON p.monkey_id = m.id
-    LEFT JOIN reactions r ON r.post_id = p.id
-    WHERE p.monkey_id = ? AND p.is_anonymous = 0
-    GROUP BY p.id
+    ${postSelectSql()}
+    WHERE p.monkey_id = ? AND ${isFalse(dialect, 'p.is_anonymous')}
     ORDER BY p.created_at DESC
     LIMIT 50
   `, req.params.monkeyId);
@@ -164,17 +126,8 @@ router.get('/:id/replies', async (req, res) => {
   const monkeyId = monkey ? monkey.id : null;
 
   const replies = await db.all(`
-    SELECT p.*, m.monkey_name, m.monkey_emoji, m.avatar_seed, m.created_at as monkey_created_at,
-      COALESCE(SUM(CASE WHEN r.type = 'banana' THEN 1 ELSE 0 END), 0) AS bananas,
-      COALESCE(SUM(CASE WHEN r.type = 'poop' THEN 1 ELSE 0 END), 0) AS poops,
-      (SELECT COUNT(*) FROM posts c WHERE c.parent_id = p.id) AS reply_count,
-      (SELECT COUNT(*) FROM flings f WHERE f.original_post_id = p.id) AS fling_count,
-      ${FLING_ATTRIBUTION_SQL}
-    FROM posts p
-    JOIN monkeys m ON p.monkey_id = m.id
-    LEFT JOIN reactions r ON r.post_id = p.id
+    ${postSelectSql()}
     WHERE p.parent_id = ?
-    GROUP BY p.id
     ORDER BY p.created_at ASC
   `, req.params.id);
 
@@ -187,17 +140,8 @@ router.get('/:id', async (req, res) => {
   const monkeyId = monkey ? monkey.id : null;
 
   const post = await db.get(`
-    SELECT p.*, m.monkey_name, m.monkey_emoji, m.avatar_seed, m.created_at as monkey_created_at,
-      COALESCE(SUM(CASE WHEN r.type = 'banana' THEN 1 ELSE 0 END), 0) AS bananas,
-      COALESCE(SUM(CASE WHEN r.type = 'poop' THEN 1 ELSE 0 END), 0) AS poops,
-      (SELECT COUNT(*) FROM posts c WHERE c.parent_id = p.id) AS reply_count,
-      (SELECT COUNT(*) FROM flings f WHERE f.original_post_id = p.id) AS fling_count,
-      ${FLING_ATTRIBUTION_SQL}
-    FROM posts p
-    JOIN monkeys m ON p.monkey_id = m.id
-    LEFT JOIN reactions r ON r.post_id = p.id
+    ${postSelectSql()}
     WHERE p.id = ?
-    GROUP BY p.id
   `, req.params.id);
 
   if (!post) return res.status(404).json({ error: 'Post not found' });

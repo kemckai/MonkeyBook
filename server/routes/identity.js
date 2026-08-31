@@ -19,10 +19,12 @@ router.get('/me', async (req, res) => {
 });
 
 router.post('/claim', requireUser(async (req, res) => {
-  const existing = await getMonkeyForUser(req.user.id);
-  if (existing) return res.json(await enrichMonkey(existing));
-
   const { createMonkeyForUser, setMonkeyCookie } = require('../lib/auth');
+  const existing = await getMonkeyForUser(req.user.id);
+  if (existing) {
+    setMonkeyCookie(res, existing.session_token);
+    return res.json(await enrichMonkey(existing));
+  }
   const { monkey, token } = await createMonkeyForUser(req.user.id);
   setMonkeyCookie(res, token);
   res.status(201).json(await enrichMonkey(monkey));
