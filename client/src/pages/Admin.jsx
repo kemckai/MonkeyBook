@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import { useAuth } from '../context/MonkeyContext';
-import { getAdminStats, getAdminReports, dismissReport, resolveReport } from '../api';
+import { getAdminStats, getAdminReports, dismissReport, resolveReport, downloadAdminCsv } from '../api';
 
 function KpiCard({ label, value, hint, variant }) {
   return (
@@ -38,6 +38,7 @@ export default function Admin() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!user?.is_admin) {
@@ -60,6 +61,17 @@ export default function Admin() {
       console.error(err);
     } finally {
       setRefreshing(false);
+    }
+  }
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      await downloadAdminCsv();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -92,14 +104,24 @@ export default function Admin() {
               <p className="admin-updated">Last updated {formatTime(stats.generated_at)}</p>
             )}
           </div>
-          <button
-            type="button"
-            className="btn-secondary btn-sm"
-            onClick={refresh}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
+          <div className="admin-header__actions">
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={handleExport}
+              disabled={exporting || !stats}
+            >
+              {exporting ? 'Exporting…' : 'Download CSV'}
+            </button>
+            <button
+              type="button"
+              className="btn-secondary btn-sm"
+              onClick={refresh}
+              disabled={refreshing}
+            >
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </div>
         </header>
 
         {stats && (

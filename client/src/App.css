@@ -1293,6 +1293,11 @@ textarea:focus-visible,
   gap: 16px;
   margin-bottom: 28px;
 }
+.admin-header__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
 .admin-updated {
   font-size: 13px;
   color: var(--text-muted);

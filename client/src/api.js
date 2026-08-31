@@ -93,6 +93,23 @@ export function getAdminReports() { return request('/admin/reports'); }
 export function dismissReport(id) { return request(`/admin/reports/${id}/dismiss`, { method: 'POST' }); }
 export function resolveReport(id) { return request(`/admin/reports/${id}/resolve`, { method: 'POST' }); }
 export function adminDeletePost(id) { return request(`/admin/posts/${id}`, { method: 'DELETE' }); }
+export async function downloadAdminCsv() {
+  const res = await fetch(`${API}/admin/export.csv`, { credentials: 'include' });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Export failed' }));
+    throw new Error(err.error || 'Export failed');
+  }
+  const blob = await res.blob();
+  const disposition = res.headers.get('Content-Disposition');
+  const filename = disposition?.match(/filename="([^"]+)"/)?.[1]
+    || `monkeybook-admin-${new Date().toISOString().slice(0, 10)}.csv`;
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
 
 // Troops
 export function getTroops() { return request('/troops'); }

@@ -2,6 +2,7 @@ const express = require('express');
 const db = require('../db');
 const { requireAdmin } = require('../lib/auth');
 const { getAdminDashboard } = require('../lib/adminDashboard');
+const { getAdminExportCsv, exportFilename } = require('../lib/adminExport');
 const { broadcast } = require('../ws');
 
 const router = express.Router();
@@ -25,6 +26,14 @@ router.get('/reports', requireAdmin(async (_req, res) => {
 router.get('/stats', requireAdmin(async (_req, res) => {
   const dashboard = await getAdminDashboard();
   res.json(dashboard);
+}));
+
+router.get('/export.csv', requireAdmin(async (_req, res) => {
+  const csv = await getAdminExportCsv();
+  const filename = exportFilename();
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+  res.send(`\uFEFF${csv}`);
 }));
 
 router.post('/reports/:id/dismiss', requireAdmin(async (req, res) => {

@@ -190,6 +190,12 @@ test('report post creates pending report', async () => {
   assert.ok(dashboard.body.activity);
   assert.ok(dashboard.body.queue);
   assert.ok(Array.isArray(dashboard.body.recent_users));
+
+  const exportCsv = await admin.get('/api/admin/export.csv');
+  assert.equal(exportCsv.status, 200);
+  assert.match(exportCsv.headers['content-type'], /text\/csv/);
+  assert.match(exportCsv.text, /SECTION,summary/);
+  assert.match(exportCsv.text, /SECTION,pending_reports/);
 });
 
 test('logout invalidates server session', async () => {
