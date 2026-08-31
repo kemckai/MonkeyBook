@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/MonkeyContext';
 
@@ -35,6 +35,8 @@ export default function Login() {
       .finally(() => setLoading(false));
   }
 
+  const googleWrapRef = useRef(null);
+
   React.useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
     const script = document.createElement('script');
@@ -45,9 +47,10 @@ export default function Login() {
         client_id: GOOGLE_CLIENT_ID,
         callback: handleGoogle,
       });
+      const width = Math.min(320, googleWrapRef.current?.offsetWidth || 320);
       window.google?.accounts.id.renderButton(
         document.getElementById('google-signin'),
-        { theme: 'outline', size: 'large', width: 320 }
+        { theme: 'outline', size: 'large', width }
       );
     };
     document.body.appendChild(script);
@@ -69,7 +72,7 @@ export default function Login() {
         {GOOGLE_CLIENT_ID && (
           <>
             <div className="auth-divider">or</div>
-            <div id="google-signin" className="google-btn-wrap" />
+            <div id="google-signin" className="google-btn-wrap" ref={googleWrapRef} />
           </>
         )}
         <p className="auth-footer">

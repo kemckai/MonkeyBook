@@ -1,5 +1,6 @@
 .app {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -34,12 +35,18 @@ textarea:focus-visible,
   background: var(--bg-card);
   border-bottom: 3px solid var(--accent);
   padding: 10px 20px;
+  padding-top: max(10px, env(safe-area-inset-top));
   display: flex;
   align-items: center;
   position: sticky;
   top: 0;
   z-index: 100;
   gap: 16px;
+}
+
+.nav-menu-btn,
+.nav-backdrop {
+  display: none;
 }
 
 .header-left {
@@ -120,6 +127,7 @@ textarea:focus-visible,
   border: 1px solid var(--border);
   border-radius: 10px;
   width: 280px;
+  max-width: calc(100vw - 24px);
   max-height: 300px;
   overflow-y: auto;
   box-shadow: 0 8px 24px var(--shadow);
@@ -144,6 +152,17 @@ textarea:focus-visible,
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.monkey-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notif-wrap {
+  position: relative;
 }
 
 .monkey-badge {
@@ -525,7 +544,7 @@ textarea:focus-visible,
   padding: 5px 8px;
   font-size: 14px;
   cursor: pointer;
-  opacity: 0.4;
+  opacity: 0.75;
   transition: opacity 0.15s, border-color 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
@@ -885,13 +904,15 @@ textarea:focus-visible,
 /* ---- Toasts ---- */
 .toast-stack {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  left: max(16px, env(safe-area-inset-left));
   z-index: 300;
   display: flex;
   flex-direction: column;
   gap: 8px;
   max-width: 320px;
+  margin-left: auto;
 }
 
 .toast {
@@ -918,21 +939,225 @@ textarea:focus-visible,
   color: var(--text-muted);
   cursor: pointer;
   font-size: 12px;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
 }
 
 /* ---- Responsive ---- */
 @media (max-width: 640px) {
-  .header { padding: 8px 12px; gap: 8px; }
+  .header {
+    padding: 8px 12px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+
   .logo { height: 32px; }
-  .header-nav { gap: 6px; }
-  .nav-link { font-size: 12px; padding: 3px 6px; }
-  .monkey-badge { font-size: 11px; padding: 3px 8px; }
+
+  .nav-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-base);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 18px;
+    min-width: 44px;
+    min-height: 44px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    border: none;
+    z-index: 140;
+    cursor: pointer;
+  }
+
+  .header-nav {
+    display: none;
+    position: fixed;
+    top: calc(52px + env(safe-area-inset-top));
+    left: 0;
+    right: 0;
+    margin: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 12px;
+    background: var(--bg-card);
+    border-bottom: 2px solid var(--accent);
+    z-index: 150;
+    box-shadow: 0 8px 24px var(--shadow);
+  }
+
+  .header-nav.open { display: flex; }
+
+  .nav-link {
+    font-size: 16px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+
+  .header-right {
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .theme-toggle,
+  .bell-btn,
+  .logout-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .monkey-badge {
+    font-size: 12px;
+    padding: 4px 8px;
+    max-width: 44px;
+    overflow: hidden;
+  }
+
+  .monkey-name,
+  .monkey-badge .streak {
+    display: none;
+  }
+
   .feed { padding: 14px 10px; }
+
+  .feed-tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .banana-budget {
+    margin-left: 0;
+    width: 100%;
+    text-align: center;
+    padding-top: 4px;
+  }
+
+  .tab {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    padding: 10px 8px;
+    min-height: 44px;
+  }
+
+  .composer textarea,
+  .auth-form input,
+  .bio-edit input,
+  .report-form select,
+  .report-form input,
+  .troop-input {
+    font-size: 16px;
+  }
+
+  .composer-footer {
+    flex-wrap: wrap;
+  }
+
+  .composer-options,
+  .composer-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .upload-btn,
+  .composer-footer button[type="submit"],
+  .composer-right button {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  .anon-toggle input {
+    width: 20px;
+    height: 20px;
+  }
+
+  .remove-img {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .post-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .reaction-btn,
+  .delete-btn,
+  .report-btn {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  .bio-edit {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .bio-edit button {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .friend-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .friend-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .friend-actions .btn-sm,
+  .btn-sm {
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 14px;
+  }
+
+  .report-card .friend-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .report-card .friend-actions button {
+    width: 100%;
+  }
+
+  .troops-header {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
   .landing-title { font-size: 36px; }
   .landing-tagline { font-size: 16px; }
   .join-card { padding: 32px 24px; }
   .join-emoji { font-size: 56px; }
   .join-name { font-size: 22px; }
+  .auth-card { padding: 28px 20px; }
+  .auth-page { padding: 16px; }
+  .legal-page { padding: 24px 16px 48px; }
 }
 
 /* ---- Auth ---- */
@@ -993,7 +1218,7 @@ textarea:focus-visible,
 .auth-divider { color: var(--text-muted); margin: 16px 0; font-size: 13px; }
 .auth-footer, .auth-legal { margin-top: 16px; font-size: 13px; color: var(--text-muted); }
 .auth-footer a, .auth-legal a { color: var(--accent); }
-.google-btn-wrap { display: flex; justify-content: center; }
+.google-btn-wrap { display: flex; justify-content: center; width: 100%; }
 .logout-btn {
   background: transparent;
   border: 1px solid var(--border);
