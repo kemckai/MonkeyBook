@@ -3,6 +3,6 @@ builder = "nixpacks"
 buildCommand = "npm run install:all && npm run build"
 
 [deploy]
-startCommand = "node server/index.js"
+startCommand = "sh scripts/start.sh"
 healthcheckPath = "/api/auth/me"
 restartPolicyType = "on_failure"
