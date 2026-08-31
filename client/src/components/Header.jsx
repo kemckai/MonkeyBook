@@ -60,15 +60,32 @@ export default function Header() {
   }, [showNotifs]);
 
   async function handleBellClick() {
-    setShowNotifs(!showNotifs);
-    if (!showNotifs && unread > 0) {
-      await markAllRead();
-      setUnread(0);
+    const opening = !showNotifs;
+    setShowNotifs(opening);
+    if (!opening) return;
+
+    try {
+      const data = await getNotifications();
+      setNotifs(data.notifications.slice(0, 10));
+      const unreadCount = Number(data.unread_count) || 0;
+      if (unreadCount > 0) {
+        await markAllRead();
+        setUnread(0);
+        setNotifs(data.notifications.slice(0, 10).map((n) => ({ ...n, read: true })));
+      } else {
+        setUnread(0);
+      }
+    } catch {
+      // keep existing notification state if fetch fails
     }
   }
 
   function openNotification(notif) {
     setShowNotifs(false);
+    if (notif.type === 'friend_request' || notif.type === 'friend_accept') {
+      navigate('/friends');
+      return;
+    }
     if (notif.reference_id) {
       navigate(`/post/${notif.reference_id}`);
     }

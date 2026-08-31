@@ -15,16 +15,25 @@ router.get('/', requireMonkey(async (req, res) => {
     `SELECT COUNT(*) as c FROM notifications WHERE monkey_id = ? AND ${isFalse(dialect, 'read')}`,
     req.monkey.id
   )).c;
-  res.json({ notifications, unread_count: unread });
-}));
-
-router.put('/:id/read', requireMonkey(async (req, res) => {
-  await db.run('UPDATE notifications SET read = ? WHERE id = ? AND monkey_id = ?', true, req.params.id, req.monkey.id);
-  res.json({ ok: true });
+  res.json({ notifications, unread_count: Number(unread) || 0 });
 }));
 
 router.put('/read-all', requireMonkey(async (req, res) => {
-  await db.run('UPDATE notifications SET read = ? WHERE monkey_id = ?', true, req.monkey.id);
+  const dialect = db.dialect || 'sqlite';
+  const readValue = dialect === 'postgres' ? true : 1;
+  await db.run('UPDATE notifications SET read = ? WHERE monkey_id = ?', readValue, req.monkey.id);
+  res.json({ ok: true });
+}));
+
+router.put('/:id/read', requireMonkey(async (req, res) => {
+  const dialect = db.dialect || 'sqlite';
+  const readValue = dialect === 'postgres' ? true : 1;
+  await db.run(
+    'UPDATE notifications SET read = ? WHERE id = ? AND monkey_id = ?',
+    readValue,
+    req.params.id,
+    req.monkey.id
+  );
   res.json({ ok: true });
 }));
 

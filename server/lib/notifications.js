@@ -1,4 +1,24 @@
-const { enqueue, JOB_TYPES } = require('./queue');
+const db = require('../db');
+const { publish } = require('./events');
+
+async function deliverNotification(payload) {
+  const result = await db.run(
+    'INSERT INTO notifications (monkey_id, type, reference_id, message) VALUES (?, ?, ?, ?)',
+    payload.monkey_id,
+    payload.type,
+    payload.reference_id,
+    payload.message
+  );
+
+  await publish(payload.broadcast_event || 'new_notification', {
+    ...(payload.broadcast_data || { monkey_id: payload.monkey_id }),
+    notification_id: result.lastInsertRowid,
+    type: payload.type,
+    reference_id: payload.reference_id,
+  });
+
+  return result.lastInsertRowid;
+}
 
 async function queueNotification({
   monkeyId,
@@ -8,7 +28,7 @@ async function queueNotification({
   broadcastEvent = 'new_notification',
   broadcastData,
 }) {
-  await enqueue(JOB_TYPES.NOTIFICATION_DELIVER, {
+  await deliverNotification({
     monkey_id: monkeyId,
     type,
     reference_id: referenceId,
@@ -18,4 +38,4 @@ async function queueNotification({
   });
 }
 
-module.exports = { queueNotification };
+module.exports = { queueNotification, deliverNotification };

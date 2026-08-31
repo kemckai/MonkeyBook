@@ -138,6 +138,30 @@ test('friend request and accept flow', async () => {
   assert.equal(friends.body.length, 1);
 });
 
+test('reply creates notification for post author', async () => {
+  const author = request.agent(app);
+  const replier = request.agent(app);
+  const authorUser = await registerAndLogin(author, `notif-author-${Date.now()}@example.com`);
+  await registerAndLogin(replier, `notif-replier-${Date.now()}@example.com`);
+
+  const post = await author.post('/api/posts').send({ content: 'notify me' });
+  assert.equal(post.status, 201);
+
+  const reply = await replier.post('/api/posts').send({ content: 'here is a reply', parent_id: post.body.id });
+  assert.equal(reply.status, 201);
+
+  const notifs = await author.get('/api/notifications');
+  assert.equal(notifs.status, 200);
+  assert.ok(notifs.body.unread_count >= 1);
+  assert.ok(notifs.body.notifications.some((n) => n.type === 'reply' && n.reference_id === post.body.id));
+
+  const readAll = await author.put('/api/notifications/read-all');
+  assert.equal(readAll.status, 200);
+
+  const afterRead = await author.get('/api/notifications');
+  assert.equal(afterRead.body.unread_count, 0);
+});
+
 test('report post creates pending report', async () => {
   process.env.ADMIN_EMAILS = `admin-${Date.now()}@example.com`;
   const author = request.agent(app);

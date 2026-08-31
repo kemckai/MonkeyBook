@@ -1,6 +1,7 @@
 const fs = require('fs/promises');
 const db = require('../db');
 const { sendPasswordResetEmail } = require('../lib/email');
+const { deliverNotification } = require('../lib/notifications');
 const { publish } = require('../lib/events');
 const { uploadBufferToR2 } = require('../lib/storage');
 const { JOB_TYPES } = require('../lib/queue');
@@ -43,14 +44,7 @@ async function handleMediaUpload(payload) {
 }
 
 async function handleNotificationDeliver(payload) {
-  await db.run(
-    'INSERT INTO notifications (monkey_id, type, reference_id, message) VALUES (?, ?, ?, ?)',
-    payload.monkey_id,
-    payload.type,
-    payload.reference_id,
-    payload.message
-  );
-  await publish(payload.broadcast_event, payload.broadcast_data);
+  await deliverNotification(payload);
 }
 
 const HANDLERS = {
