@@ -12,8 +12,5 @@
         "npm run build --prefix client"
       ]
     }
-  },
-  "deploy": {
-    "startCommand": "node server/index.js"
   }
 }
