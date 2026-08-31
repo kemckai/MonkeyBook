@@ -1,4 +1,5 @@
 const db = require('./db');
+const { toInt } = require('./database/sql');
 
 const TITLE_THRESHOLDS = [
   { id: 'serial_pooper', label: 'Serial Pooper', check: (stats) => stats.poops_given >= 100 },
@@ -19,14 +20,14 @@ async function computeTitle(monkeyId) {
   const today = new Date().toISOString().split('T')[0];
 
   const stats = {
-    poops_given: (await db.get(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ? AND type = 'poop'`, monkeyId)).c,
-    bananas_given: (await db.get(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ? AND type = 'banana'`, monkeyId)).c,
-    reactions_given: (await db.get(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ?`, monkeyId)).c,
-    bananas_received: (await db.get(`SELECT COUNT(*) as c FROM reactions r JOIN posts p ON r.post_id = p.id WHERE p.monkey_id = ? AND r.type = 'banana'`, monkeyId)).c,
-    poops_received: (await db.get(`SELECT COUNT(*) as c FROM reactions r JOIN posts p ON r.post_id = p.id WHERE p.monkey_id = ? AND r.type = 'poop'`, monkeyId)).c,
-    total_posts: (await db.get(`SELECT COUNT(*) as c FROM posts WHERE monkey_id = ?`, monkeyId)).c,
-    posts_today: (await db.get(`SELECT COUNT(*) as c FROM posts WHERE monkey_id = ? AND DATE(created_at) = ?`, monkeyId, today)).c,
-    flings_given: (await db.get(`SELECT COUNT(*) as c FROM flings WHERE monkey_id = ?`, monkeyId)).c,
+    poops_given: toInt((await db.get(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ? AND type = 'poop'`, monkeyId)).c),
+    bananas_given: toInt((await db.get(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ? AND type = 'banana'`, monkeyId)).c),
+    reactions_given: toInt((await db.get(`SELECT COUNT(*) as c FROM reactions WHERE monkey_id = ?`, monkeyId)).c),
+    bananas_received: toInt((await db.get(`SELECT COUNT(*) as c FROM reactions r JOIN posts p ON r.post_id = p.id WHERE p.monkey_id = ? AND r.type = 'banana'`, monkeyId)).c),
+    poops_received: toInt((await db.get(`SELECT COUNT(*) as c FROM reactions r JOIN posts p ON r.post_id = p.id WHERE p.monkey_id = ? AND r.type = 'poop'`, monkeyId)).c),
+    total_posts: toInt((await db.get(`SELECT COUNT(*) as c FROM posts WHERE monkey_id = ?`, monkeyId)).c),
+    posts_today: toInt((await db.get(`SELECT COUNT(*) as c FROM posts WHERE monkey_id = ? AND DATE(created_at) = ?`, monkeyId, today)).c),
+    flings_given: toInt((await db.get(`SELECT COUNT(*) as c FROM flings WHERE monkey_id = ?`, monkeyId)).c),
   };
 
   for (const t of TITLE_THRESHOLDS) {

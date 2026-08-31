@@ -17,8 +17,8 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await login(email, password);
-      navigate('/feed');
+      const data = await login(email, password);
+      navigate(data.monkey ? '/feed' : '/join');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -30,7 +30,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     loginWithGoogle(response.credential)
-      .then(() => navigate('/feed'))
+      .then((data) => navigate(data.monkey ? '/feed' : '/join'))
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }

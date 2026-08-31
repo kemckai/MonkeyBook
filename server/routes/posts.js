@@ -1,7 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const { getDisplayName } = require('../titles');
-const { nowMinus1Day, isFalse } = require('../database/sql');
+const { nowMinus1Day, isFalse, toInt } = require('../database/sql');
 const { postSelectSql, trendingScoreSql } = require('../lib/postQueries');
 const { requireMonkey, getMonkey } = require('../lib/auth');
 const { broadcast } = require('../ws');
@@ -33,10 +33,10 @@ async function enrichPost(post, currentMonkeyId) {
     monkey_name: displayName,
     monkey_emoji: post.is_anonymous ? '🙈' : post.monkey_emoji,
     avatar_seed: post.is_anonymous ? 0 : post.avatar_seed,
-    bananas: post.bananas || 0,
-    poops: post.poops || 0,
-    reply_count: post.reply_count || 0,
-    fling_count: post.fling_count || 0,
+    bananas: toInt(post.bananas),
+    poops: toInt(post.poops),
+    reply_count: toInt(post.reply_count),
+    fling_count: toInt(post.fling_count),
     last_fling_name: post.last_fling_name || null,
     last_fling_emoji: post.last_fling_emoji || null,
     parent_id: post.parent_id,

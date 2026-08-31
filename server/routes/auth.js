@@ -56,14 +56,13 @@ router.post('/register', async (req, res) => {
   );
 
   const user = await db.get('SELECT id, email, is_admin FROM users WHERE id = ?', result.lastInsertRowid);
-  const { monkey, token } = await createMonkeyForUser(user.id);
-  await issueSession(res, user, token);
+  await issueSession(res, user, null);
 
   res.status(201).json({
     id: user.id,
     email: user.email,
     is_admin: !!user.is_admin,
-    monkey: await enrichMonkey(monkey),
+    monkey: null,
   });
 });
 
@@ -78,14 +77,7 @@ router.post('/login', async (req, res) => {
   if (!valid) return res.status(401).json({ error: 'Invalid email or password' });
 
   let monkey = await getMonkeyForUser(user.id);
-  let monkeyToken = null;
-  if (!monkey) {
-    const created = await createMonkeyForUser(user.id);
-    monkey = created.monkey;
-    monkeyToken = created.token;
-  } else {
-    monkeyToken = monkey.session_token;
-  }
+  const monkeyToken = monkey ? monkey.session_token : null;
 
   await issueSession(res, user, monkeyToken);
 
@@ -93,7 +85,7 @@ router.post('/login', async (req, res) => {
     id: user.id,
     email: user.email,
     is_admin: !!user.is_admin,
-    monkey: await enrichMonkey(monkey),
+    monkey: monkey ? await enrichMonkey(monkey) : null,
   });
 });
 
@@ -127,14 +119,7 @@ router.post('/google', async (req, res) => {
   }
 
   let monkey = await getMonkeyForUser(user.id);
-  let monkeyToken = null;
-  if (!monkey) {
-    const created = await createMonkeyForUser(user.id);
-    monkey = created.monkey;
-    monkeyToken = created.token;
-  } else {
-    monkeyToken = monkey.session_token;
-  }
+  const monkeyToken = monkey ? monkey.session_token : null;
 
   await issueSession(res, user, monkeyToken);
 
@@ -142,7 +127,7 @@ router.post('/google', async (req, res) => {
     id: user.id,
     email: user.email,
     is_admin: !!user.is_admin,
-    monkey: await enrichMonkey(monkey),
+    monkey: monkey ? await enrichMonkey(monkey) : null,
   });
 });
 
@@ -198,25 +183,24 @@ router.post('/reset-password', async (req, res) => {
 });
 
 router.post('/reroll-monkey', requireUser(async (req, res) => {
-  const monkey = await getMonkeyForUser(req.user.id);
-  if (monkey) {
-    await db.run('DELETE FROM monkeys WHERE id = ?', monkey.id);
-  }
-
   const token = uuidv4();
   const { name, emoji } = generateMonkeyIdentity();
   const avatarSeed = Math.floor(Math.random() * 2147483647);
-  const result = await db.run(
-    'INSERT INTO monkeys (user_id, session_token, monkey_name, monkey_emoji, avatar_seed) VALUES (?, ?, ?, ?, ?)',
-    req.user.id,
-    token,
-    name,
-    emoji,
-    avatarSeed
-  );
-  const newMonkey = await db.get('SELECT * FROM monkeys WHERE id = ?', result.lastInsertRowid);
-  setMonkeyCookie(res, token);
-  res.status(201).json(await enrichMonkey(newMonkey));
+  const monkey = await getMonkeyForUser(req.user.id);
+
+  if (monkey) {
+    await db.run(
+      'UPDATE monkeys SET session_token = ?, monkey_name = ?, monkey_emoji = ?, avatar_seed = ? WHERE id = ?',
+      token, name, emoji, avatarSeed, monkey.id
+    );
+    const updated = await db.get('SELECT * FROM monkeys WHERE id = ?', monkey.id);
+    setMonkeyCookie(res, token);
+    return res.status(201).json(await enrichMonkey(updated));
+  }
+
+  const created = await createMonkeyForUser(req.user.id);
+  setMonkeyCookie(res, created.token);
+  res.status(201).json(await enrichMonkey(created.monkey));
 }));
 
 module.exports = router;

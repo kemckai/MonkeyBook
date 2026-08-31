@@ -5,7 +5,7 @@ import Post from '../components/Post';
 import MonkeyAvatar from '../components/MonkeyAvatar';
 import ToastStack from '../components/ToastStack';
 import { useMonkey } from '../context/MonkeyContext';
-import { getProfile, getMonkeyPosts, toggleReaction, deletePost, flingPost, getFriendStatus, sendFriendRequest, acceptFriendRequest, declineFriendRequest } from '../api';
+import { getProfile, getMonkeyPosts, toggleReaction, deletePost, flingPost, getFriendStatus, sendFriendRequest, acceptFriendRequest, removeFriend } from '../api';
 
 export default function Profile() {
   const { id } = useParams();
@@ -88,8 +88,9 @@ export default function Profile() {
         setFriendStatus('friends');
         pushToast('You are now friends!', 'success');
       } else if (friendStatus === 'pending_outgoing') {
-        await declineFriendRequest(friendshipId);
+        await removeFriend(friendshipId);
         setFriendStatus('none');
+        setFriendshipId(null);
         pushToast('Request cancelled.', 'info');
       }
     } catch (err) {

@@ -25,7 +25,10 @@ test.after(() => {
 async function registerAndLogin(agent, email) {
   const reg = await agent.post('/api/auth/register').send({ email, password: 'testpass123' });
   assert.equal(reg.status, 201);
-  return reg.body;
+  assert.equal(reg.body.monkey, null);
+  const claim = await agent.post('/api/identity/claim');
+  assert.equal(claim.status, 201);
+  return { ...reg.body, monkey: claim.body };
 }
 
 test('auth register and login flow works', async () => {
@@ -48,6 +51,13 @@ test('auth register and login flow works', async () => {
 test('identity claim requires auth', async () => {
   const agent = request.agent(app);
   const blocked = await agent.post('/api/identity/claim');
+  assert.equal(blocked.status, 401);
+});
+
+test('upload requires monkey auth', async () => {
+  const blocked = await request(app)
+    .post('/api/upload')
+    .attach('image', Buffer.from('fake'), { filename: 'test.png', contentType: 'image/png' });
   assert.equal(blocked.status, 401);
 });
 

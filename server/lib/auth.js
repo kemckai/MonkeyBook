@@ -73,8 +73,39 @@ async function issueSession(res, user, monkeyToken) {
   const sessionToken = uuidv4();
   await db.run('UPDATE users SET session_token = ?, last_login_at = CURRENT_TIMESTAMP WHERE id = ?', sessionToken, user.id);
   setUserCookie(res, sessionToken);
-  if (monkeyToken) setMonkeyCookie(res, monkeyToken);
+  if (monkeyToken) {
+    setMonkeyCookie(res, monkeyToken);
+  } else {
+    const opts = { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' };
+    res.clearCookie(MONKEY_COOKIE, opts);
+  }
   return sessionToken;
+}
+
+async function resolveMonkey(req, res) {
+  const user = await getUser(req);
+  if (!user) return { status: 401, error: 'Login required' };
+  let monkey = await getMonkey(req);
+  if (!monkey) {
+    monkey = await getMonkeyForUser(user.id);
+    if (monkey) setMonkeyCookie(res, monkey.session_token);
+  }
+  if (!monkey) return { status: 401, error: 'No monkey identity' };
+  if (monkey.user_id && monkey.user_id !== user.id) {
+    return { status: 403, error: 'Session mismatch' };
+  }
+  return { user, monkey };
+}
+
+function requireMonkeyMiddleware(req, res, next) {
+  resolveMonkey(req, res)
+    .then((result) => {
+      if (result.status) return res.status(result.status).json({ error: result.error });
+      req.user = result.user;
+      req.monkey = result.monkey;
+      next();
+    })
+    .catch(next);
 }
 
 function isAdminEmail(email) {
@@ -98,19 +129,10 @@ function requireUser(handler) {
 function requireMonkey(handler) {
   return async (req, res, next) => {
     try {
-      const user = await getUser(req);
-      if (!user) return res.status(401).json({ error: 'Login required' });
-      let monkey = await getMonkey(req);
-      if (!monkey) {
-        monkey = await getMonkeyForUser(user.id);
-        if (monkey) setMonkeyCookie(res, monkey.session_token);
-      }
-      if (!monkey) return res.status(401).json({ error: 'No monkey identity' });
-      if (monkey.user_id && monkey.user_id !== user.id) {
-        return res.status(403).json({ error: 'Session mismatch' });
-      }
-      req.user = user;
-      req.monkey = monkey;
+      const result = await resolveMonkey(req, res);
+      if (result.status) return res.status(result.status).json({ error: result.error });
+      req.user = result.user;
+      req.monkey = result.monkey;
       return handler(req, res, next);
     } catch (err) {
       next(err);
@@ -147,5 +169,6 @@ module.exports = {
   isAdminEmail,
   requireUser,
   requireMonkey,
+  requireMonkeyMiddleware,
   requireAdmin,
 };

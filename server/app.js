@@ -17,10 +17,15 @@ const friendRoutes = require('./routes/friends');
 const reportRoutes = require('./routes/reports');
 const adminRoutes = require('./routes/admin');
 const { upload, useR2, uploadToR2, localUrl, uploadsDir } = require('./lib/storage');
+const { requireMonkeyMiddleware } = require('./lib/auth');
 
 function createApp({ withStaticClient = true, withWebSocket = true } = {}) {
   const app = express();
   const server = http.createServer(app);
+
+  if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
 
   if (withWebSocket) {
     initWS(server);
@@ -37,7 +42,7 @@ function createApp({ withStaticClient = true, withWebSocket = true } = {}) {
   app.use('/uploads', express.static(uploadsDir));
   app.use('/api/uploads', express.static(uploadsDir));
 
-  app.post('/api/upload', upload.single('image'), async (req, res) => {
+  app.post('/api/upload', requireMonkeyMiddleware, upload.single('image'), async (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'No valid image' });
     try {
       const url = useR2() ? await uploadToR2(req.file) : localUrl(req.file.filename);
@@ -58,6 +63,12 @@ function createApp({ withStaticClient = true, withWebSocket = true } = {}) {
   app.use('/api/friends', friendRoutes);
   app.use('/api/reports', reportRoutes);
   app.use('/api/admin', adminRoutes);
+
+  app.use((err, _req, res, _next) => {
+    console.error(err);
+    const status = err.status || err.statusCode || 500;
+    res.status(status).json({ error: err.message || 'Internal server error' });
+  });
 
   app.broadcast = broadcast;
 
