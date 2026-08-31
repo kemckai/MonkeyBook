@@ -134,6 +134,7 @@ const SQLITE_SCHEMA = `
     attempts INTEGER DEFAULT 0,
     max_attempts INTEGER DEFAULT 3,
     run_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processing_started_at DATETIME,
     last_error TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     completed_at DATETIME
@@ -281,6 +282,7 @@ const POSTGRES_SCHEMA = `
     attempts INTEGER DEFAULT 0,
     max_attempts INTEGER DEFAULT 3,
     run_at TIMESTAMPTZ DEFAULT NOW(),
+    processing_started_at TIMESTAMPTZ,
     last_error TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     completed_at TIMESTAMPTZ

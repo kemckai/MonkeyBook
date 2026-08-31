@@ -1,4 +1,4 @@
-const { claimNext, complete, fail } = require('../lib/queue');
+const { claimNext, complete, fail, reapStuckJobs } = require('../lib/queue');
 const { processJob } = require('./handlers');
 
 const POLL_MS = parseInt(process.env.WORKER_POLL_MS || '1000', 10);
@@ -22,6 +22,7 @@ async function processOne() {
 async function poll() {
   if (!running) return;
   try {
+    await reapStuckJobs();
     let processed = true;
     while (processed && running) {
       processed = await processOne();

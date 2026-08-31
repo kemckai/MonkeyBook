@@ -1,9 +1,11 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs/promises');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { requireMonkeyMiddleware } = require('../lib/auth');
 const { upload, useR2, localUrl } = require('../lib/storage');
+const { validateImageBuffer } = require('../lib/imageMagic');
 const { enqueue, JOB_TYPES } = require('../lib/queue');
 
 const router = express.Router();
@@ -12,6 +14,13 @@ router.post('/', requireMonkeyMiddleware, upload.single('image'), async (req, re
   if (!req.file) return res.status(400).json({ error: 'No valid image' });
 
   try {
+    const buffer = await fs.readFile(req.file.path);
+    const validation = validateImageBuffer(buffer, req.file.mimetype);
+    if (!validation.ok) {
+      await fs.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({ error: validation.error });
+    }
+
     if (!useR2()) {
       return res.json({ url: localUrl(req.file.filename), status: 'completed' });
     }
@@ -24,7 +33,7 @@ router.post('/', requireMonkeyMiddleware, upload.single('image'), async (req, re
       jobId,
       req.monkey.id,
       req.file.path,
-      req.file.mimetype,
+      validation.mime,
       now
     );
 

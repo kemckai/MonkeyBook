@@ -5,6 +5,7 @@ const { nowMinus1Day, isFalse, toInt } = require('../database/sql');
 const { postSelectSql, trendingScoreSql } = require('../lib/postQueries');
 const { requireMonkey, getMonkey } = require('../lib/auth');
 const { queueNotification } = require('../lib/notifications');
+const { isAllowedImageUrl } = require('../lib/imageUrl');
 const { broadcast } = require('../ws');
 
 const router = express.Router();
@@ -156,6 +157,9 @@ router.post('/', requireMonkey(async (req, res) => {
   const { content, parent_id, troop_id, is_anonymous, image_url } = req.body;
   if (!content || !content.trim()) return res.status(400).json({ error: 'Post cannot be empty' });
   if (content.length > 500) return res.status(400).json({ error: 'Post too long (max 500 chars)' });
+  if (image_url && !isAllowedImageUrl(image_url)) {
+    return res.status(400).json({ error: 'Invalid image URL' });
+  }
 
   if (parent_id) {
     const parent = await db.get('SELECT id FROM posts WHERE id = ?', parent_id);

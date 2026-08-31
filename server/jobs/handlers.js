@@ -4,6 +4,7 @@ const { sendPasswordResetEmail } = require('../lib/email');
 const { deliverNotification } = require('../lib/notifications');
 const { publish } = require('../lib/events');
 const { uploadBufferToR2 } = require('../lib/storage');
+const { validateImageBuffer } = require('../lib/imageMagic');
 const { JOB_TYPES } = require('../lib/queue');
 
 async function handleEmailPasswordReset(payload) {
@@ -19,7 +20,10 @@ async function handleMediaUpload(payload) {
 
   try {
     const buffer = await fs.readFile(job.temp_path);
-    const publicUrl = await uploadBufferToR2(buffer, job.mime_type, job.temp_path);
+    const validation = validateImageBuffer(buffer, job.mime_type);
+    if (!validation.ok) throw new Error(validation.error);
+
+    const publicUrl = await uploadBufferToR2(buffer, validation.mime, job.temp_path);
     const now = new Date().toISOString();
 
     await db.run(

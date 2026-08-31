@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { extensionForMime } = require('./imageMagic');
 
 const uploadsDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
@@ -39,7 +40,7 @@ function getS3Client() {
 }
 
 async function uploadBufferToR2(buffer, mimeType, sourcePath) {
-  const ext = path.extname(sourcePath) || '.bin';
+  const ext = extensionForMime(mimeType) || path.extname(sourcePath) || '.bin';
   const key = `uploads/${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
   const client = getS3Client();
   await client.send(new PutObjectCommand({

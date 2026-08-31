@@ -2,6 +2,7 @@ const http = require('http');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 
@@ -29,6 +30,8 @@ function createApp({ withStaticClient = true, withWebSocket = true, withRealtime
   if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
   }
+
+  app.use(helmet({ contentSecurityPolicy: false }));
 
   if (withWebSocket) {
     initWS(server);

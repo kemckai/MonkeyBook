@@ -12,6 +12,7 @@ let initialized = false;
 async function ensureSchema() {
   if (initialized) return;
   await pool.query(POSTGRES_SCHEMA);
+  await pool.query('ALTER TABLE jobs ADD COLUMN IF NOT EXISTS processing_started_at TIMESTAMPTZ');
   initialized = true;
 }
 

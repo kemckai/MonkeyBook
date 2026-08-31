@@ -139,6 +139,13 @@ function migrate(db) {
       );
     `);
   }
+
+  if (tables.includes('jobs')) {
+    const jobsCols = tableCols('jobs');
+    if (!jobsCols.includes('processing_started_at')) {
+      addCol('jobs', 'processing_started_at DATETIME');
+    }
+  }
 }
 
 module.exports = { migrate };

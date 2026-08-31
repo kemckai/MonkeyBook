@@ -212,3 +212,48 @@ test('monkey-of-the-day endpoint succeeds', async () => {
   const res = await request(app).get('/api/monkey-of-the-day');
   assert.equal(res.status, 200);
 });
+
+test('post rejects disallowed image_url', async () => {
+  const agent = request.agent(app);
+  await registerAndLogin(agent, `imgbad-${Date.now()}@example.com`);
+  const res = await agent.post('/api/posts').send({
+    content: 'tracking pixel',
+    image_url: 'https://evil.example.com/track.gif',
+  });
+  assert.equal(res.status, 400);
+  assert.match(res.body.error, /image URL/i);
+});
+
+test('post allows local upload image_url', async () => {
+  const agent = request.agent(app);
+  await registerAndLogin(agent, `imgok-${Date.now()}@example.com`);
+  const res = await agent.post('/api/posts').send({
+    content: 'with image',
+    image_url: '/api/uploads/test.png',
+  });
+  assert.equal(res.status, 201);
+  assert.equal(res.body.image_url, '/api/uploads/test.png');
+});
+
+test('upload rejects non-image file content', async () => {
+  const agent = request.agent(app);
+  await registerAndLogin(agent, `upload-${Date.now()}@example.com`);
+  const res = await agent
+    .post('/api/upload')
+    .attach('image', Buffer.from('not an image'), { filename: 'fake.png', contentType: 'image/png' });
+  assert.equal(res.status, 400);
+});
+
+test('reapStuckJobs requeues expired processing jobs', async () => {
+  const { reapStuckJobs } = require('../lib/queue');
+  const row = await db.run(
+    `INSERT INTO jobs (type, payload, status, attempts, run_at, processing_started_at)
+     VALUES (?, ?, 'processing', 1, datetime('now'), datetime('now', '-10 minutes'))`,
+    'email.password-reset',
+    JSON.stringify({ email: 'a@b.com', token: 'x' })
+  );
+  const reaped = await reapStuckJobs();
+  assert.ok(reaped >= 1);
+  const job = await db.get('SELECT status FROM jobs WHERE id = ?', row.lastInsertRowid);
+  assert.equal(job.status, 'pending');
+});

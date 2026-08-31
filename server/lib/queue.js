@@ -46,7 +46,7 @@ async function claimNext() {
         LIMIT 1
       )
       UPDATE jobs
-      SET status = 'processing', attempts = jobs.attempts + 1
+      SET status = 'processing', attempts = jobs.attempts + 1, processing_started_at = NOW()
       FROM next_job
       WHERE jobs.id = next_job.id
       RETURNING jobs.*
@@ -63,7 +63,7 @@ async function claimNext() {
   if (!pending) return null;
 
   const updated = await db.run(
-    "UPDATE jobs SET status = 'processing', attempts = attempts + 1 WHERE id = ? AND status = 'pending'",
+    "UPDATE jobs SET status = 'processing', attempts = attempts + 1, processing_started_at = datetime('now') WHERE id = ? AND status = 'pending'",
     pending.id
   );
   if (!updated.changes) return claimNext();
@@ -75,7 +75,7 @@ async function claimNext() {
 async function complete(id) {
   const now = new Date().toISOString();
   await db.run(
-    "UPDATE jobs SET status = 'completed', completed_at = ? WHERE id = ?",
+    "UPDATE jobs SET status = 'completed', completed_at = ?, processing_started_at = NULL WHERE id = ?",
     now,
     id
   );
@@ -89,7 +89,7 @@ async function fail(id, error, { retryDelayMs = 5000 } = {}) {
   if (row.attempts < row.max_attempts) {
     const runAt = new Date(Date.now() + retryDelayMs * row.attempts).toISOString();
     await db.run(
-      "UPDATE jobs SET status = 'pending', last_error = ?, run_at = ? WHERE id = ?",
+      "UPDATE jobs SET status = 'pending', last_error = ?, run_at = ?, processing_started_at = NULL WHERE id = ?",
       message,
       runAt,
       id
@@ -99,7 +99,7 @@ async function fail(id, error, { retryDelayMs = 5000 } = {}) {
 
   const now = new Date().toISOString();
   await db.run(
-    "UPDATE jobs SET status = 'failed', last_error = ?, completed_at = ? WHERE id = ?",
+    "UPDATE jobs SET status = 'failed', last_error = ?, completed_at = ?, processing_started_at = NULL WHERE id = ?",
     message,
     now,
     id
@@ -124,6 +124,17 @@ async function getQueueStats() {
   };
 }
 
+async function reapStuckJobs() {
+  const timeoutMs = parseInt(process.env.JOB_PROCESSING_TIMEOUT_MS || '300000', 10);
+  const cutoff = new Date(Date.now() - timeoutMs).toISOString();
+  const result = await db.run(
+    `UPDATE jobs SET status = 'pending', processing_started_at = NULL, last_error = 'reaped: processing timeout'
+     WHERE status = 'processing' AND processing_started_at IS NOT NULL AND processing_started_at < ?`,
+    cutoff
+  );
+  return result.changes || 0;
+}
+
 module.exports = {
   JOB_TYPES,
   enqueue,
@@ -132,4 +143,5 @@ module.exports = {
   fail,
   parseJob,
   getQueueStats,
+  reapStuckJobs,
 };

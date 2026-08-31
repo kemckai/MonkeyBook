@@ -102,6 +102,9 @@ router.post('/google', authLimiter, async (req, res) => {
     audience: process.env.GOOGLE_CLIENT_ID,
   });
   const payload = ticket.getPayload();
+  if (!payload.email_verified) {
+    return res.status(400).json({ error: 'Google email not verified' });
+  }
   const email = payload.email?.toLowerCase();
   const googleId = payload.sub;
   if (!email) return res.status(400).json({ error: 'Google account has no email' });
